@@ -1,5 +1,36 @@
-from migen.fhdl.std import Instance, Module
-from migen.genlib.io import DifferentialInput, DifferentialOutput
+from migen.fhdl.std import (Instance, Module, Signal)
+from migen.genlib.resetsync import AsyncResetSynchronizer
+from migen.genlib.io import (DifferentialInput, DifferentialOutput)
+
+
+class QuartusAsyncResetSynchronizerImpl(Module):
+    def __init__(self, cd, async_reset):
+        rst_1 = Signal()
+        self.specials += [
+            Instance("DFFEA",
+                     d=0,
+                     clk=cd.clk,
+                     clrn=1,
+                     prn=1,
+                     ena=1,
+                     adata=1,
+                     aload=async_reset,
+                     q=rst_1),
+            Instance("DFFEA",
+                     d=rst_1,
+                     clk=cd.clk,
+                     clrn=1,
+                     prn=1,
+                     ena=1,
+                     adata=1,
+                     aload=async_reset,
+                     q=cd.rst)]
+
+
+class QuartusAsyncResetSynchronizer:
+    @staticmethod
+    def lower(dr):
+        return QuartusAsyncResetSynchronizerImpl(dr.cd, dr.async_reset)
 
 
 class QuartusDifferentialInputImpl(Module):
@@ -33,6 +64,7 @@ class QuartusDifferentialOutput:
 
 
 altera_special_overrides = {
+    AsyncResetSynchronizer: QuartusAsyncResetSynchronizer,
     DifferentialInput: QuartusDifferentialInput,
     DifferentialOutput: QuartusDifferentialOutput
 }
