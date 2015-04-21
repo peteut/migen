@@ -1,7 +1,7 @@
 ### Migen (Milkymist generator)
 
-[![Build Status](https://travis-ci.org/m-labs/migen.svg)](
-https://travis-ci.org/m-labs/migen)
+[![Build Status](https://travis-ci.org/peteut/migen.svg)](
+https://travis-ci.org/peteut/migen)
 
 #### A Python toolbox for building complex digital hardware
 
