@@ -1,5 +1,5 @@
-from migen.fhdl.std import *
-from migen.bus.transactions import *
+from migen.fhdl.std import Module, StopSimulation
+from migen.bus.transactions import TRead, TWrite
 
 
 def _byte_mask(orig, dat_w, sel):

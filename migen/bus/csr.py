@@ -1,21 +1,25 @@
-from migen.fhdl.std import *
-from migen.bus.transactions import *
+from migen.fhdl.std import (Module, StopSimulation, flen, Memory,
+                            Signal, If, Cat, log2_int)
+from migen.bus.transactions import TRead, TWrite
 from migen.bank.description import CSRStorage
-from migen.genlib.record import *
+from migen.genlib.record import (Record, DIR_M_TO_S, DIR_S_TO_M,
+                                 set_layout_parameters)
 from migen.genlib.misc import chooser
 
 _layout = [
-    ("adr",  "address_width", DIR_M_TO_S),
-    ("we",                 1, DIR_M_TO_S),
-    ("dat_w",   "data_width", DIR_M_TO_S),
-    ("dat_r",   "data_width", DIR_S_TO_M)
+    ("adr", "address_width", DIR_M_TO_S),
+    ("we", 1, DIR_M_TO_S),
+    ("dat_w", "data_width", DIR_M_TO_S),
+    ("dat_r", "data_width", DIR_S_TO_M)
 ]
 
 
 class Interface(Record):
     def __init__(self, data_width=8, address_width=14):
-        Record.__init__(self, set_layout_parameters(_layout,
-            data_width=data_width, address_width=address_width))
+        super().__init__(set_layout_parameters(
+            _layout,
+            data_width=data_width,
+            address_width=address_width))
 
 
 class Interconnect(Module):
@@ -60,7 +64,8 @@ class Initiator(Module):
 
 
 class SRAM(Module):
-    def __init__(self, mem_or_size, address, read_only=None, init=None, bus=None):
+    def __init__(self, mem_or_size, address, read_only=None, init=None,
+                 bus=None):
         if bus is None:
             bus = Interface()
         self.bus = bus
@@ -68,12 +73,14 @@ class SRAM(Module):
         if isinstance(mem_or_size, Memory):
             mem = mem_or_size
         else:
-            mem = Memory(data_width, mem_or_size//(data_width//8), init=init)
-        csrw_per_memw = (mem.width + data_width - 1)//data_width
+            mem = Memory(data_width, mem_or_size // (data_width // 8),
+                         init=init)
+        csrw_per_memw = (mem.width + data_width - 1) // data_width
         word_bits = log2_int(csrw_per_memw)
-        page_bits = log2_int((mem.depth*csrw_per_memw + 511)//512, False)
+        page_bits = log2_int((mem.depth * csrw_per_memw + 511) // 512, False)
         if page_bits:
-            self._page = CSRStorage(page_bits, name=mem.name_override + "_page")
+            self._page = CSRStorage(page_bits,
+                                    name=mem.name_override + "_page")
         else:
             self._page = None
         if read_only is None:
@@ -94,23 +101,28 @@ class SRAM(Module):
 
         if word_bits:
             word_index = Signal(word_bits)
-            word_expanded = Signal(csrw_per_memw*data_width)
+            word_expanded = Signal(csrw_per_memw * data_width)
             self.sync += word_index.eq(self.bus.adr[:word_bits])
             self.comb += [
                 word_expanded.eq(port.dat_r),
                 If(sel_r,
-                    chooser(word_expanded, word_index, self.bus.dat_r, n=csrw_per_memw, reverse=True)
-                )
+                    chooser(word_expanded, word_index, self.bus.dat_r,
+                            n=csrw_per_memw, reverse=True)
+                   )
             ]
             if not read_only:
                 wregs = []
-                for i in range(csrw_per_memw-1):
+                for i in range(csrw_per_memw - 1):
                     wreg = Signal(data_width)
-                    self.sync += If(sel & self.bus.we & (self.bus.adr[:word_bits] == i), wreg.eq(self.bus.dat_w))
+                    self.sync += If(sel & self.bus.we
+                                    & (self.bus.adr[:word_bits] == i),
+                                    wreg.eq(self.bus.dat_w))
                     wregs.append(wreg)
                 memword_chunks = [self.bus.dat_w] + list(reversed(wregs))
                 self.comb += [
-                    port.we.eq(sel & self.bus.we & (self.bus.adr[:word_bits] == csrw_per_memw - 1)),
+                    port.we.eq(
+                        sel & self.bus.we
+                        & (self.bus.adr[:word_bits] == csrw_per_memw - 1)),
                     port.dat_w.eq(Cat(*memword_chunks))
                 ]
         else:
@@ -122,10 +134,13 @@ class SRAM(Module):
                 ]
 
         if self._page is None:
-            self.comb += port.adr.eq(self.bus.adr[word_bits:word_bits+flen(port.adr)])
+            self.comb += port.adr.eq(self.bus.adr[word_bits:word_bits +
+                                                  flen(port.adr)])
         else:
             pv = self._page.storage
-            self.comb += port.adr.eq(Cat(self.bus.adr[word_bits:word_bits+flen(port.adr)-flen(pv)], pv))
+            self.comb += port.adr.eq(Cat(
+                self.bus.adr[word_bits:word_bits + flen(port.adr) - flen(pv)],
+                pv))
 
     def get_csrs(self):
         if self._page is None:

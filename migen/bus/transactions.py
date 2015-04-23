@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import bits_for
 
 
 class Transaction:
@@ -6,14 +6,15 @@ class Transaction:
         self.address = address
         self.data = data
         if sel is None:
-            bytes = (bits_for(data) + 7)//8
-            sel = 2**bytes - 1
+            bytes = (bits_for(data) + 7) // 8
+            sel = 2 ** bytes - 1
         self.sel = sel
         self.busname = busname
         self.latency = 0
 
     def __str__(self):
-        return "<" + self.__class__.__name__ + " adr:" + hex(self.address) + " dat:" + hex(self.data) + ">"
+        return "<{} adr:0x{:x} dat:0x{:x}>".format(
+            self.__class__.__name__, self.address, self.data)
 
 
 class TRead(Transaction):

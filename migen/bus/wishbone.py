@@ -1,30 +1,32 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Array, Cat, Signal, Replicate, If, flen, \
+    StopSimulation, Memory
 from migen.genlib import roundrobin
-from migen.genlib.record import *
+from migen.genlib.record import Record, set_layout_parameters, \
+    DIR_M_TO_S, DIR_S_TO_M
 from migen.genlib.misc import optree, chooser
 from migen.genlib.fsm import FSM, NextState
-from migen.bus.transactions import *
+from migen.bus.transactions import TWrite, TRead
 
 _layout = [
-    ("adr",             30, DIR_M_TO_S),
+    ("adr", 30, DIR_M_TO_S),
     ("dat_w", "data_width", DIR_M_TO_S),
     ("dat_r", "data_width", DIR_S_TO_M),
-    ("sel",    "sel_width", DIR_M_TO_S),
-    ("cyc",              1, DIR_M_TO_S),
-    ("stb",              1, DIR_M_TO_S),
-    ("ack",              1, DIR_S_TO_M),
-    ("we",               1, DIR_M_TO_S),
-    ("cti",              3, DIR_M_TO_S),
-    ("bte",              2, DIR_M_TO_S),
-    ("err",              1, DIR_S_TO_M)
+    ("sel", "sel_width", DIR_M_TO_S),
+    ("cyc", 1, DIR_M_TO_S),
+    ("stb", 1, DIR_M_TO_S),
+    ("ack", 1, DIR_S_TO_M),
+    ("we", 1, DIR_M_TO_S),
+    ("cti", 3, DIR_M_TO_S),
+    ("bte", 2, DIR_M_TO_S),
+    ("err", 1, DIR_S_TO_M)
 ]
 
 
 class Interface(Record):
     def __init__(self, data_width=32):
-        Record.__init__(self, set_layout_parameters(_layout,
-            data_width=data_width,
-            sel_width=data_width//8))
+        super().__init__(set_layout_parameters(_layout,
+                                               data_width=data_width,
+                                               sel_width=data_width // 8))
 
 
 class InterconnectPointToPoint(Module):
@@ -72,7 +74,7 @@ class Decoder(Module):
 
         # decode slave addresses
         self.comb += [slave_sel[i].eq(fun(master.adr))
-            for i, (fun, bus) in enumerate(slaves)]
+                      for i, (fun, bus) in enumerate(slaves)]
         if register:
             self.sync += slave_sel_r.eq(slave_sel)
         else:
@@ -82,11 +84,12 @@ class Decoder(Module):
         for slave in slaves:
             for name, size, direction in _layout:
                 if direction == DIR_M_TO_S and name != "cyc":
-                    self.comb += getattr(slave[1], name).eq(getattr(master, name))
+                    self.comb += getattr(slave[1], name).eq(
+                        getattr(master, name))
 
         # combine cyc with slave selection signals
         self.comb += [slave[1].cyc.eq(master.cyc & slave_sel[i])
-            for i, slave in enumerate(slaves)]
+                      for i, slave in enumerate(slaves)]
 
         # generate master ack (resp. err) by ORing all slave acks (resp. errs)
         self.comb += [
@@ -95,7 +98,8 @@ class Decoder(Module):
         ]
 
         # mux (1-hot) slave data return
-        masked = [Replicate(slave_sel_r[i], flen(master.dat_r)) & slaves[i][1].dat_r for i in range(ns)]
+        masked = [Replicate(slave_sel_r[i], flen(master.dat_r))
+                  & slaves[i][1].dat_r for i in range(ns)]
         self.comb += master.dat_r.eq(optree("|", masked))
 
 
@@ -120,14 +124,15 @@ class Crossbar(Module):
 
 
 class DownConverter(Module):
-    # DownConverter splits Wishbone accesses of N bits in M accesses of L bits where:
+    # DownConverter splits Wishbone accesses of N bits in M accesses
+    # of L bits where:
     # N is the original data-width
     # L is the target data-width
     # M = N/L
     def __init__(self, dw_i, dw_o):
         self.wishbone_i = Interface(dw_i)
         self.wishbone_o = Interface(dw_o)
-        self.ratio = dw_i//dw_o
+        self.ratio = dw_i // dw_o
 
         ###
 
@@ -138,7 +143,8 @@ class DownConverter(Module):
         read_ack = Signal()
         ack = Signal()
         self.comb += [
-            ack.eq(self.wishbone_o.cyc & self.wishbone_o.stb & self.wishbone_o.ack),
+            ack.eq(self.wishbone_o.cyc & self.wishbone_o.stb
+                   & self.wishbone_o.ack),
             write_ack.eq(ack & self.wishbone_o.we),
             read_ack.eq(ack & ~self.wishbone_o.we)
         ]
@@ -149,7 +155,8 @@ class DownConverter(Module):
 
         # read data path
         dat_r = Signal(dw_i)
-        self.sync += If(ack, dat_r.eq(Cat(self.wishbone_o.dat_r, dat_r[:dw_i-dw_o])))
+        self.sync += If(ack, dat_r.eq(Cat(self.wishbone_o.dat_r,
+                                          dat_r[:dw_i - dw_o])))
 
         # write data path
         dat_w = Signal(dw_i)
@@ -162,7 +169,8 @@ class DownConverter(Module):
         # direct connection of wishbone_i --> wishbone_o signals
         for name, size, direction in self.wishbone_i.layout:
             if direction == DIR_M_TO_S and name not in ["adr", "dat_w", "sel"]:
-                self.comb += getattr(self.wishbone_o, name).eq(getattr(self.wishbone_i, name))
+                self.comb += getattr(self.wishbone_o, name).eq(
+                    getattr(self.wishbone_i, name))
 
         # adaptation of adr & dat signals
         self.comb += [
@@ -171,38 +179,40 @@ class DownConverter(Module):
         ]
 
         self.comb += chooser(dat_w, cnt, self.wishbone_o.dat_w, reverse=True)
-        self.comb += chooser(self.wishbone_i.sel, cnt, self.wishbone_o.sel, reverse=True)
+        self.comb += chooser(self.wishbone_i.sel, cnt, self.wishbone_o.sel,
+                             reverse=True)
 
         # fsm
         fsm = FSM(reset_state="IDLE")
         self.submodules += fsm
 
         fsm.act("IDLE",
-            If(write_ack, NextState("WRITE_ADAPT")),
-            If(read_ack, NextState("READ_ADAPT"))
-        )
+                If(write_ack, NextState("WRITE_ADAPT")),
+                If(read_ack, NextState("READ_ADAPT"))
+                )
 
         fsm.act("WRITE_ADAPT",
-            If(write_ack & (cnt == self.ratio-1),
-                NextState("IDLE"),
-                rst.eq(1),
-                self.wishbone_i.err.eq(err | self.wishbone_o.err),
-                self.wishbone_i.ack.eq(1),
-            )
-        )
+                If(write_ack & (cnt == self.ratio - 1),
+                   NextState("IDLE"),
+                   rst.eq(1),
+                   self.wishbone_i.err.eq(err | self.wishbone_o.err),
+                   self.wishbone_i.ack.eq(1),
+                   )
+                )
 
         master_i_dat_r = Signal(dw_i)
-        self.comb += master_i_dat_r.eq(Cat(self.wishbone_o.dat_r, dat_r[:dw_i-dw_o]))
+        self.comb += master_i_dat_r.eq(Cat(self.wishbone_o.dat_r,
+                                           dat_r[:dw_i - dw_o]))
 
         fsm.act("READ_ADAPT",
-            If(read_ack & (cnt == self.ratio-1),
-                NextState("IDLE"),
-                rst.eq(1),
-                self.wishbone_i.err.eq(err | self.wishbone_o.err),
-                self.wishbone_i.ack.eq(1),
-                self.wishbone_i.dat_r.eq(master_i_dat_r)
-            )
-        )
+                If(read_ack & (cnt == self.ratio - 1),
+                   NextState("IDLE"),
+                   rst.eq(1),
+                   self.wishbone_i.err.eq(err | self.wishbone_o.err),
+                   self.wishbone_i.ack.eq(1),
+                   self.wishbone_i.dat_r.eq(master_i_dat_r)
+                   )
+                )
 
 
 class Tap(Module):
@@ -215,11 +225,11 @@ class Tap(Module):
             assert(selfp.bus.cyc and selfp.bus.stb)
             if selfp.bus.we:
                 transaction = TWrite(selfp.bus.adr,
-                    selfp.bus.dat_w,
-                    selfp.bus.sel)
+                                     selfp.bus.dat_w,
+                                     selfp.bus.sel)
             else:
                 transaction = TRead(selfp.bus.adr,
-                    selfp.bus.dat_r)
+                                    selfp.bus.dat_r)
             self.handler(transaction)
     do_simulation.passive = True
 
@@ -236,7 +246,8 @@ class Initiator(Module):
     def do_simulation(self, selfp):
         if self.transaction is None or selfp.bus.ack:
             if self.transaction is not None:
-                self.transaction.latency = selfp.simulator.cycle_counter - self.transaction_start - 1
+                self.transaction.latency = selfp.simulator.cycle_counter \
+                    - self.transaction_start - 1
                 if isinstance(self.transaction, TRead):
                     self.transaction.data = selfp.bus.dat_r
             try:
@@ -303,7 +314,8 @@ class SRAM(Module):
             assert(mem_or_size.width <= bus_data_width)
             self.mem = mem_or_size
         else:
-            self.mem = Memory(bus_data_width, mem_or_size//(bus_data_width//8), init=init)
+            self.mem = Memory(bus_data_width,
+                              mem_or_size // (bus_data_width // 8), init=init)
         if read_only is None:
             if hasattr(self.mem, "bus_read_only"):
                 read_only = self.mem.bus_read_only
@@ -317,8 +329,9 @@ class SRAM(Module):
         self.specials += self.mem, port
         # generate write enable signal
         if not read_only:
-            self.comb += [port.we[i].eq(self.bus.cyc & self.bus.stb & self.bus.we & self.bus.sel[i])
-                for i in range(4)]
+            self.comb += [port.we[i].eq(self.bus.cyc & self.bus.stb
+                                        & self.bus.we & self.bus.sel[i])
+                          for i in range(4)]
         # address and data
         self.comb += [
             port.adr.eq(self.bus.adr[:flen(port.adr)]),
@@ -329,5 +342,6 @@ class SRAM(Module):
         # generate ack
         self.sync += [
             self.bus.ack.eq(0),
-            If(self.bus.cyc & self.bus.stb & ~self.bus.ack,    self.bus.ack.eq(1))
+            If(self.bus.cyc & self.bus.stb & ~self.bus.ack,
+               self.bus.ack.eq(1))
         ]
