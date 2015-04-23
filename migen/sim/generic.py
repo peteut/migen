@@ -1,16 +1,17 @@
 import warnings
 
-from migen.fhdl.std import *
+from migen.fhdl.std import ClockDomain, Memory, flen, StopSimulation
 from migen.fhdl.structure import _Fragment
 from migen.fhdl import verilog
-from migen.sim.ipc import *
+from migen.sim.ipc import Initiator, MessageTick, MessageGo, MessageRead, \
+    MessageWrite, MessageReadReply, Int32
 from migen.sim import icarus
 
 
 class TopLevel:
     def __init__(self, vcd_name=None, vcd_level=1,
-      top_name="top", dut_type="dut", dut_name="dut",
-      cd_name="sys", clk_period=10):
+                 top_name="top", dut_type="dut", dut_name="dut",
+                 cd_name="sys", clk_period=10):
         self.vcd_name = vcd_name
         self.vcd_level = vcd_level
         self.top_name = top_name
@@ -60,22 +61,23 @@ initial begin
 end
 """
         r = template1.format(top_name=self.top_name,
-            dut_type=self.dut_type,
-            dut_name=self.dut_name,
-            clk_name=self._cd_name + "_clk",
-            rst_name=self._cd_name + "_rst",
-            hclk_period=str(self._clk_period/2),
-            sockaddr=sockaddr)
+                             dut_type=self.dut_type,
+                             dut_name=self.dut_name,
+                             clk_name=self._cd_name + "_clk",
+                             rst_name=self._cd_name + "_rst",
+                             hclk_period=str(self._clk_period / 2),
+                             sockaddr=sockaddr)
         if self.vcd_name is not None:
             r += template2.format(vcd_name=self.vcd_name,
-                vcd_level=str(self.vcd_level),
-                dut_name=self.dut_name)
+                                  vcd_level=str(self.vcd_level),
+                                  dut_name=self.dut_name)
         r += "\nendmodule"
         return r
 
 
 class Simulator:
-    def __init__(self, fragment, top_level=None, sim_runner=None, sockaddr="simsocket", **vopts):
+    def __init__(self, fragment, top_level=None, sim_runner=None,
+                 sockaddr="simsocket", **vopts):
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
         if top_level is None:
@@ -90,9 +92,9 @@ class Simulator:
 
         fragment = fragment + _Fragment(clock_domains=top_level.clock_domains)
         c_fragment = verilog.convert(fragment,
-            ios=self.top_level.ios,
-            name=self.top_level.dut_type,
-            **vopts)
+                                     ios=self.top_level.ios,
+                                     name=self.top_level.dut_type,
+                                     **vopts)
         self.namespace = c_fragment.ns
 
         self.cycle_counter = -1
@@ -104,7 +106,9 @@ class Simulator:
         assert(isinstance(reply, MessageTick))
 
         self.sim_functions = fragment.sim
-        self.active_sim_functions = set(f for f in fragment.sim if not hasattr(f, "passive") or not f.passive)
+        self.active_sim_functions = set(f for f in fragment.sim
+                                        if not hasattr(f, "passive")
+                                        or not f.passive)
         self.unreferenced = {}
 
     def run(self, ncycles=None):
@@ -119,7 +123,9 @@ class Simulator:
                     return self.active_sim_functions and counter < ncycles
         else:
             if ncycles is None:
-                raise ValueError("No active simulation function present - must specify ncycles to end simulation")
+                raise ValueError("No active simulation function present - "
+                                 "must specify ncycles to end simulation")
+
             def continue_simulation():
                 return counter < ncycles
 
@@ -159,9 +165,9 @@ class Simulator:
 
     def rd(self, item, index=0):
         try:
-            name = self.top_level.top_name + "." \
-              + self.top_level.dut_name + "." \
-              + self.namespace.get_name(item)
+            name = ".".join([self.top_level.top_name,
+                             self.top_level.dut_name,
+                             self.namespace.get_name(item)])
             self.ipc.send(MessageRead(name, Int32(index)))
             reply = self.ipc.recv()
             assert(isinstance(reply, MessageReadReply))
@@ -174,9 +180,9 @@ class Simulator:
         else:
             signed = item.signed
             nbits = flen(item)
-        value = value & (2**nbits - 1)
-        if signed and (value & 2**(nbits - 1)):
-            value -= 2**nbits
+        value = value & (2 ** nbits - 1)
+        if signed and (value & 2 ** (nbits - 1)):
+            value -= 2 ** nbits
         return value
 
     def wr(self, item, value, index=0):
@@ -185,12 +191,12 @@ class Simulator:
         else:
             nbits = flen(item)
         if value < 0:
-            value += 2**nbits
-        assert(value >= 0 and value < 2**nbits)
+            value += 2 ** nbits
+        assert(value >= 0 and value < 2 ** nbits)
         try:
-            name = self.top_level.top_name + "." \
-              + self.top_level.dut_name + "." \
-              + self.namespace.get_name(item)
+            name = ".".join([self.top_level.top_name,
+                             self.top_level.dut_name,
+                             self.namespace.get_name(item)])
             self.ipc.send(MessageWrite(name, Int32(index), value))
         except KeyError:
             self.unreferenced[(item, index)] = value
@@ -198,7 +204,7 @@ class Simulator:
     def __del__(self):
         if hasattr(self, "ipc"):
             warnings.warn("call Simulator.close() to clean up "
-                    "or use it as a contextmanager", DeprecationWarning)
+                          "or use it as a contextmanager", DeprecationWarning)
             self.close()
 
     def close(self):

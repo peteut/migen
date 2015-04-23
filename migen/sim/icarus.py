@@ -7,10 +7,17 @@ import time
 
 
 class Runner:
-    def __init__(self, options=None, extra_files=None, top_file="migensim_top.v", dut_file="migensim_dut.v", vvp_file=None, keep_files=False):
-        if extra_files is None: extra_files = []
-        if vvp_file is None: vvp_file = dut_file + "vp"
-        if options is None: options = []
+    def __init__(self, options=None, extra_files=None,
+                 top_file="migensim_top.v",
+                 dut_file="migensim_dut.v",
+                 vvp_file=None,
+                 keep_files=False):
+        if extra_files is None:
+            extra_files = []
+        if vvp_file is None:
+            vvp_file = dut_file + "vp"
+        if options is None:
+            options = []
         self.options = options
         self.extra_files = extra_files
         self.top_file = top_file
@@ -24,8 +31,11 @@ class Runner:
             f.write(c_top)
         c_dut.write(self.dut_file)
         self.data_files += c_dut.data_files.keys()
-        subprocess.check_call(["iverilog", "-o", self.vvp_file] + self.options + [self.top_file, self.dut_file] + self.extra_files)
-        self.process = subprocess.Popen(["vvp", "-mmigensim", "-Mvpi", self.vvp_file])
+        subprocess.check_call(["iverilog", "-o", self.vvp_file] + self.options
+                              + [self.top_file, self.dut_file]
+                              + self.extra_files)
+        self.process = subprocess.Popen(["vvp", "-mmigensim", "-Mvpi",
+                                         self.vvp_file])
 
     def close(self):
         if hasattr(self, "process"):
@@ -35,9 +45,11 @@ class Runner:
                 self.process.kill()
             self.process.wait()
         if not self.keep_files:
-            for f in [self.top_file, self.dut_file, self.vvp_file] + self.data_files:
+            for f in [self.top_file, self.dut_file, self.vvp_file] + \
+                    self.data_files:
                 try:
                     os.remove(f)
                 except OSError:
                     pass
+
         self.data_files.clear()

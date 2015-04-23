@@ -53,7 +53,8 @@ class MessageReadReply(Message):
     code = 4
     parameters = [(int, "value")]
 
-message_classes = [MessageTick, MessageGo, MessageWrite, MessageRead, MessageReadReply]
+message_classes = [MessageTick, MessageGo, MessageWrite, MessageRead,
+                   MessageReadReply]
 
 #
 # Packing
@@ -113,7 +114,7 @@ def _unpack_int(i, nchunks=None):
     if nchunks is None:
         nchunks = next(i)
     for j in range(nchunks):
-        v += power*next(i)
+        v += power * next(i)
         power *= 256
     return v
 

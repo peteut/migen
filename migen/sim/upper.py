@@ -12,14 +12,15 @@ class MemoryProxy:
             return self.simulator.rd(self._simproxy_obj, key)
         else:
             start, stop, step = key.indices(self._simproxy_obj.depth)
-            return [self.simulator.rd(self._simproxy_obj, i) for i in range(start, stop, step)]
+            return [self.simulator.rd(self._simproxy_obj, i)
+                    for i in range(start, stop, step)]
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
             self.simulator.wr(self._simproxy_obj, key, value)
         else:
             start, stop, step = key.indices(self.__obj.depth)
-            if len(value) != (stop - start)//step:
+            if len(value) != (stop - start) // step:
                 raise ValueError
             for i, v in zip(range(start, stop, step), value):
                 self.simulator.wr(self._simproxy_obj, i, v)
