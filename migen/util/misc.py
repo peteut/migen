@@ -37,5 +37,5 @@ def gcd_multiple(numbers):
     if l == 1:
         return numbers[0]
     else:
-        s = l//2
+        s = l // 2
         return gcd(gcd_multiple(numbers[:s]), gcd_multiple(numbers[s:]))
