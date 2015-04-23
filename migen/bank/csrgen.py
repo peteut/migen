@@ -1,5 +1,5 @@
 from migen.util.misc import xdir
-from migen.fhdl.std import *
+from migen.fhdl.std import Signal, flen, If, Case, Module
 from migen.bus import csr
 from migen.bank.bank import GenericBank
 
@@ -12,7 +12,7 @@ class Bank(GenericBank):
 
         ###
 
-        GenericBank.__init__(self, description, flen(self.bus.dat_w))
+        super().__init__(description, flen(self.bus.dat_w))
 
         sel = Signal()
         self.comb += sel.eq(self.bus.adr[9:] == address)
@@ -20,12 +20,12 @@ class Bank(GenericBank):
         for i, c in enumerate(self.simple_csrs):
             self.comb += [
                 c.r.eq(self.bus.dat_w[:c.size]),
-                c.re.eq(sel & \
-                    self.bus.we & \
-                    (self.bus.adr[:self.decode_bits] == i))
+                c.re.eq(sel & self.bus.we &
+                        (self.bus.adr[:self.decode_bits] == i))
             ]
 
-        brcases = dict((i, self.bus.dat_r.eq(c.w)) for i, c in enumerate(self.simple_csrs))
+        brcases = dict((i, self.bus.dat_r.eq(c.w)) for i,
+                       c in enumerate(self.simple_csrs))
         self.sync += [
             self.bus.dat_r.eq(0),
             If(sel, Case(self.bus.adr[:self.decode_bits], brcases))

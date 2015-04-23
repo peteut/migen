@@ -4,7 +4,8 @@ from migen.bank.description import CSR
 
 class GenericBank(Module):
     def __init__(self, description, busword):
-        # Turn description into simple CSRs and claim ownership of compound CSR modules
+        # Turn description into simple CSRs and claim ownership of
+        # compound CSR modules
         self.simple_csrs = []
         for c in description:
             if isinstance(c, CSR):
@@ -13,7 +14,7 @@ class GenericBank(Module):
                 c.finalize(busword)
                 self.simple_csrs += c.get_simple_csrs()
                 self.submodules += c
-        self.decode_bits = bits_for(len(self.simple_csrs)-1)
+        self.decode_bits = bits_for(len(self.simple_csrs) - 1)
 
 
 def get_offset(description, name, busword):
@@ -21,5 +22,5 @@ def get_offset(description, name, busword):
     for c in description:
         if c.name == name:
             return offset
-        offset += (c.size + busword - 1)//busword
-    raise KeyError("CSR not found: "+name)
+        offset += (c.size + busword - 1) // busword
+    raise KeyError("CSR not found: " + name)
