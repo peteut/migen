@@ -1,9 +1,9 @@
 # Simple Processor Interface
 
-from migen.fhdl.std import *
-from migen.bank.description import *
-from migen.flow.actor import *
-from migen.flow.network import *
+from migen.fhdl.std import Module, Signal, If, Memory, bits_for, flen
+from migen.bank.description import CSR, AutoCSR, CSRStorage, CSRStatus
+from migen.flow.network import (AbstractActor, CompositeActor, DataFlowGraph,
+                                Source, Sink)
 from migen.flow import plumbing
 from migen.actorlib import misc
 
@@ -42,16 +42,18 @@ class SingleGenerator(Module, AutoCSR):
             trigger = self._enable.storage
         else:
             raise ValueError
-        self.sync += If(self.source.ack | ~self.source.stb, self.source.stb.eq(trigger))
+        self.sync += If(self.source.ack | ~self.source.stb,
+                        self.source.stb.eq(trigger))
 
-        self._create_csrs(layout, self.source.payload, mode != MODE_SINGLE_SHOT)
+        self._create_csrs(layout, self.source.payload,
+                          mode != MODE_SINGLE_SHOT)
 
     def _create_csrs(self, layout, target, atomic, prefix=""):
         for element in layout:
             if isinstance(element[1], list):
                 self._create_csrs(element[1], atomic,
-                    getattr(target, element[0]),
-                    element[0] + "_")
+                                  getattr(target, element[0]),
+                                  element[0] + "_")
             else:
                 name = element[0]
                 nbits = element[1]
@@ -59,16 +61,19 @@ class SingleGenerator(Module, AutoCSR):
                     reset = element[2]
                 else:
                     reset = 0
+
                 if len(element) > 3:
                     alignment = element[3]
                 else:
                     alignment = 0
+
                 regname = prefix + name
-                reg = CSRStorage(nbits + alignment, reset=reset, atomic_write=atomic,
-                    alignment_bits=alignment, name=regname)
-                setattr(self, "r_"+regname, reg)
+                reg = CSRStorage(nbits + alignment, reset=reset,
+                                 atomic_write=atomic,
+                                 alignment_bits=alignment, name=regname)
+                setattr(self, "r_" + regname, reg)
                 self.sync += If(self.source.ack | ~self.source.stb,
-                    getattr(target, name).eq(reg.storage))
+                                getattr(target, name).eq(reg.storage))
 
 
 class Collector(Module, AutoCSR):
@@ -77,9 +82,10 @@ class Collector(Module, AutoCSR):
         self.busy = Signal()
         dw = sum(len(s) for s in self.sink.payload.flatten())
 
-        self._wa = CSRStorage(bits_for(depth-1), write_from_dev=True)
-        self._wc = CSRStorage(bits_for(depth), write_from_dev=True, atomic_write=True)
-        self._ra = CSRStorage(bits_for(depth-1))
+        self._wa = CSRStorage(bits_for(depth - 1), write_from_dev=True)
+        self._wc = CSRStorage(bits_for(depth), write_from_dev=True,
+                              atomic_write=True)
+        self._ra = CSRStorage(bits_for(depth - 1))
         self._rd = CSRStatus(dw)
 
         ###
@@ -99,8 +105,8 @@ class Collector(Module, AutoCSR):
                     self._wa.we.eq(1),
                     self._wc.we.eq(1),
                     wp.we.eq(1)
-                )
-            ),
+                   )
+               ),
             self._wa.dat_w.eq(self._wa.storage + 1),
             self._wc.dat_w.eq(self._wc.storage - 1),
 
@@ -113,11 +119,14 @@ class Collector(Module, AutoCSR):
 
 
 class _DMAController(Module):
-    def __init__(self, bus_accessor, bus_aw, bus_dw, mode, base_reset=0, length_reset=0):
-        self.alignment_bits = bits_for(bus_dw//8) - 1
+    def __init__(self, bus_accessor, bus_aw, bus_dw, mode, base_reset=0,
+                 length_reset=0):
+        self.alignment_bits = bits_for(bus_dw // 8) - 1
         layout = [
-            ("length", bus_aw + self.alignment_bits, length_reset, self.alignment_bits),
-            ("base", bus_aw + self.alignment_bits, base_reset, self.alignment_bits)
+            ("length", bus_aw + self.alignment_bits, length_reset,
+             self.alignment_bits),
+            ("base", bus_aw + self.alignment_bits, base_reset,
+             self.alignment_bits)
         ]
         self.generator = SingleGenerator(layout, mode)
         self.r_busy = CSRStatus()
@@ -135,14 +144,14 @@ class DMAReadController(_DMAController):
     def __init__(self, bus_accessor, *args, **kwargs):
         bus_aw = flen(bus_accessor.address.a)
         bus_dw = flen(bus_accessor.data.d)
-        _DMAController.__init__(self, bus_accessor, bus_aw, bus_dw, *args, **kwargs)
+        super().__init__(bus_accessor, bus_aw, bus_dw, *args, **kwargs)
 
         g = DataFlowGraph()
         g.add_pipeline(self.generator,
-            misc.IntSequence(bus_aw, bus_aw),
-            AbstractActor(plumbing.Buffer),
-            bus_accessor,
-            AbstractActor(plumbing.Buffer))
+                       misc.IntSequence(bus_aw, bus_aw),
+                       AbstractActor(plumbing.Buffer),
+                       bus_accessor,
+                       AbstractActor(plumbing.Buffer))
         comp_actor = CompositeActor(g)
         self.submodules += comp_actor
 
@@ -155,16 +164,17 @@ class DMAWriteController(_DMAController):
     def __init__(self, bus_accessor, *args, ack_when_inactive=False, **kwargs):
         bus_aw = flen(bus_accessor.address_data.a)
         bus_dw = flen(bus_accessor.address_data.d)
-        _DMAController.__init__(self, bus_accessor, bus_aw, bus_dw, *args, **kwargs)
+        super().__init__(bus_accessor, bus_aw, bus_dw, *args, **kwargs)
 
         g = DataFlowGraph()
         adr_buffer = AbstractActor(plumbing.Buffer)
         int_sequence = misc.IntSequence(bus_aw, bus_aw)
         g.add_pipeline(self.generator,
-            int_sequence,
-            adr_buffer)
+                       int_sequence,
+                       adr_buffer)
         g.add_connection(adr_buffer, bus_accessor, sink_subr=["a"])
-        g.add_connection(AbstractActor(plumbing.Buffer), bus_accessor, sink_subr=["d"])
+        g.add_connection(AbstractActor(plumbing.Buffer), bus_accessor,
+                         sink_subr=["d"])
         comp_actor = CompositeActor(g)
         self.submodules += comp_actor
 

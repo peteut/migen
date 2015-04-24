@@ -1,5 +1,5 @@
-from migen.fhdl.std import *
-from migen.flow.actor import *
+from migen.fhdl.std import Module, Signal
+from migen.flow.actor import Source, Sink
 from migen.genlib import fifo
 
 
@@ -46,12 +46,11 @@ class _FIFOActor(Module):
 
 class SyncFIFO(_FIFOActor):
     def __init__(self, layout, depth, buffered=False):
-        _FIFOActor.__init__(
-            self,
+        super().__init__(
             fifo.SyncFIFOBuffered if buffered else fifo.SyncFIFO,
             layout, depth)
 
 
 class AsyncFIFO(_FIFOActor):
     def __init__(self, layout, depth):
-        _FIFOActor.__init__(self, fifo.AsyncFIFO, layout, depth)
+        super().__init__(fifo.AsyncFIFO, layout, depth)

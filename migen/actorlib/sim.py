@@ -1,6 +1,6 @@
-from migen.fhdl.std import *
-from migen.flow.actor import *
-from migen.flow.transactions import *
+from migen.fhdl.std import Signal, Module, StopSimulation
+from migen.flow.actor import Source, Sink
+from migen.flow.transactions import Token
 from migen.util.misc import xdir
 
 
@@ -29,7 +29,8 @@ def _sim_multiwrite(sim, obj, value):
 # Tokens for Source endpoints are pushed according to their "value" field.
 #
 # NB: the possibility to push several tokens at once is important to interact
-# with actors that only accept a group of tokens when all of them are available.
+# with actors that only accept a group of tokens when all of them are
+# available.
 class TokenExchanger(Module):
     def __init__(self, generator, actor):
         self.generator = generator
@@ -83,7 +84,8 @@ class TokenExchanger(Module):
             self.active = set()
         else:
             raise TypeError
-        if self.active and all(transaction.idle_wait for transaction in self.active):
+        if self.active and all(transaction.idle_wait for transaction in
+                               self.active):
             self.busy = False
 
     def do_simulation(self, selfp):
@@ -119,4 +121,4 @@ def _dumper_gen(prefix):
 class Dumper(SimActor):
     def __init__(self, layout, prefix=""):
         self.result = Sink(layout)
-        SimActor.__init__(self, _dumper_gen(prefix))
+        super().__init__(_dumper_gen(prefix))

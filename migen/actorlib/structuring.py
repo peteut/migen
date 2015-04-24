@@ -1,8 +1,9 @@
 from copy import copy
 
-from migen.fhdl.std import *
-from migen.genlib.record import *
-from migen.flow.actor import *
+from migen.fhdl.std import Cat, Signal, flen, Module, If, Case
+from migen.genlib.record import Record
+from migen.flow.actor import (Sink, Source, CombinatorialActor,
+                              EndpointDescription)
 
 
 def _rawbits_layout(l):
@@ -13,10 +14,11 @@ def _rawbits_layout(l):
 
 
 class Cast(CombinatorialActor):
-    def __init__(self, layout_from, layout_to, reverse_from=False, reverse_to=False):
+    def __init__(self, layout_from, layout_to, reverse_from=False,
+                 reverse_to=False):
         self.sink = Sink(_rawbits_layout(layout_from))
         self.source = Source(_rawbits_layout(layout_to))
-        CombinatorialActor.__init__(self)
+        super().__init__()
 
         ###
 
@@ -32,14 +34,15 @@ class Cast(CombinatorialActor):
 
 
 def pack_layout(l, n):
-    return [("chunk"+str(i), l) for i in range(n)]
+    return [("chunk" + str(i), l) for i in range(n)]
 
 
 class Unpack(Module):
     def __init__(self, n, layout_to, reverse=False):
         self.source = source = Source(layout_to)
         description_from = copy(source.description)
-        description_from.payload_layout = pack_layout(description_from.payload_layout, n)
+        description_from.payload_layout = pack_layout(
+            description_from.payload_layout, n)
         self.sink = sink = Sink(description_from)
 
         self.busy = Signal()
@@ -51,7 +54,7 @@ class Unpack(Module):
         last = Signal()
         self.comb += [
             first.eq(mux == 0),
-            last.eq(mux == (n-1)),
+            last.eq(mux == (n - 1)),
             source.stb.eq(sink.stb),
             sink.ack.eq(last & source.ack)
         ]
@@ -66,8 +69,9 @@ class Unpack(Module):
         ]
         cases = {}
         for i in range(n):
-            chunk = n-i-1 if reverse else i
-            cases[i] = [source.payload.raw_bits().eq(getattr(sink.payload, "chunk"+str(chunk)).raw_bits())]
+            chunk = n - i  - 1 if reverse else i
+            cases[i] = [source.payload.raw_bits().eq(
+                getattr(sink.payload, "chunk" + str(chunk)).raw_bits())]
         self.comb += Case(mux, cases).makedefault()
 
         for f in description_from.param_layout:
@@ -86,7 +90,8 @@ class Pack(Module):
     def __init__(self, layout_from, n, reverse=False):
         self.sink = sink = Sink(layout_from)
         description_to = copy(sink.description)
-        description_to.payload_layout = pack_layout(description_to.payload_layout, n)
+        description_to.payload_layout = pack_layout(
+            description_to.payload_layout, n)
         self.source = source = Source(description_to)
         self.busy = Signal()
 
@@ -98,8 +103,10 @@ class Pack(Module):
         strobe_all = Signal()
         cases = {}
         for i in range(n):
-            chunk = n-i-1 if reverse else i
-            cases[i] = [getattr(source.payload, "chunk"+str(chunk)).raw_bits().eq(sink.payload.raw_bits())]
+            chunk = n - i - 1 if reverse else i
+            cases[i] = [getattr(source.payload,
+                                "chunk" + str(chunk)).raw_bits().eq(
+                                    sink.payload.raw_bits())]
         self.comb += [
             self.busy.eq(strobe_all),
             sink.ack.eq(~strobe_all | source.ack),
@@ -151,16 +158,17 @@ class Chunkerize(CombinatorialActor):
         else:
             layout_to = pack_layout(layout_to, n)
         self.source = Source(layout_to)
-        CombinatorialActor.__init__(self)
+        super().__init__()
 
         ###
 
         for i in range(n):
-            chunk = n-i-1 if reverse else i
+            chunk = n - i - 1 if reverse else i
             for f in self.sink.description.payload_layout:
                 src = getattr(self.sink, f[0])
-                dst = getattr(getattr(self.source, "chunk"+str(chunk)), f[0])
-                self.comb += dst.eq(src[i*flen(src)//n:(i+1)*flen(src)//n])
+                dst = getattr(getattr(self.source, "chunk" + str(chunk)), f[0])
+                self.comb += dst.eq(
+                    src[i * flen(src) // n:(i + 1) * flen(src) // n])
 
         for f in self.sink.description.param_layout:
             src = getattr(self.sink, f[0])
@@ -173,22 +181,24 @@ class Unchunkerize(CombinatorialActor):
         if isinstance(layout_from, EndpointDescription):
             fields = layout_from.payload_layout
             layout_from = copy(layout_from)
-            layout_from.payload_layout = pack_layout(layout_from.payload_layout, n)
+            layout_from.payload_layout = pack_layout(
+                layout_from.payload_layout, n)
         else:
             fields = layout_from
             layout_from = pack_layout(layout_from, n)
         self.sink = Sink(layout_from)
         self.source = Source(layout_to)
-        CombinatorialActor.__init__(self)
+        super().__init__()
 
         ###
 
         for i in range(n):
-            chunk = n-i-1 if reverse else i
+            chunk = n - i - 1 if reverse else i
             for f in fields:
-                src = getattr(getattr(self.sink, "chunk"+str(chunk)), f[0])
+                src = getattr(getattr(self.sink, "chunk" + str(chunk)), f[0])
                 dst = getattr(self.source, f[0])
-                self.comb += dst[i*flen(dst)//n:(i+1)*flen(dst)//n].eq(src)
+                self.comb += dst[
+                    i * flen(dst) // n:(i + 1) * flen(dst) // n].eq(src)
 
         for f in self.sink.description.param_layout:
             src = getattr(self.sink, f[0])
@@ -211,8 +221,9 @@ class Converter(Module):
         if width_from > width_to:
             if width_from % width_to:
                 raise ValueError
-            ratio = width_from//width_to
-            self.submodules.chunkerize = Chunkerize(layout_from, layout_to, ratio, reverse)
+            ratio = width_from // width_to
+            self.submodules.chunkerize = Chunkerize(layout_from, layout_to,
+                                                    ratio, reverse)
             self.submodules.unpack = Unpack(ratio, layout_to)
 
             self.comb += [
@@ -225,9 +236,10 @@ class Converter(Module):
         elif width_to > width_from:
             if width_to % width_from:
                 raise ValueError
-            ratio = width_to//width_from
+            ratio = width_to // width_from
             self.submodules.pack = Pack(layout_from, ratio)
-            self.submodules.unchunkerize = Unchunkerize(layout_from, ratio, layout_to, reverse)
+            self.submodules.unchunkerize = Unchunkerize(layout_from, ratio,
+                                                        layout_to, reverse)
 
             self.comb += [
                 Record.connect(self.sink, self.pack.sink),

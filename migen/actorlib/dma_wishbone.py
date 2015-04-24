@@ -1,6 +1,6 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal, If
 from migen.bus import wishbone
-from migen.flow.actor import *
+from migen.flow.actor import Source, Sink
 
 
 class Reader(Module):
@@ -31,8 +31,7 @@ class Reader(Module):
             If(self.data.ack, data_reg_loaded.eq(0)),
             If(self.bus.ack,
                 data_reg_loaded.eq(1),
-                data_reg.eq(self.bus.dat_r)
-            )
+                data_reg.eq(self.bus.dat_r))
         ]
 
 

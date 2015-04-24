@@ -1,7 +1,7 @@
-from migen.fhdl.std import *
-from migen.genlib.roundrobin import *
-from migen.genlib.record import *
-from migen.flow.actor import *
+from migen.fhdl.std import Module, If, Signal, Case, flen, Cat
+from migen.genlib.roundrobin import RoundRobin
+from migen.genlib.record import Record
+from migen.flow.actor import Source, Sink, EndpointDescription
 from migen.actorlib.fifo import SyncFIFO
 from migen.genlib.fsm import FSM, NextState
 from migen.genlib.misc import reverse_bytes, Counter
@@ -75,7 +75,7 @@ class Dispatcher(Module):
             cases = {}
             for i, slave in enumerate(slaves):
                 if one_hot:
-                    idx = 2**i
+                    idx = 2 ** i
                 else:
                     idx = i
                 cases[idx] = [Record.connect(master, slave)]
@@ -106,7 +106,7 @@ class Header:
         if "_lsb" in name:
             field = getattr(obj, name.replace("_lsb", ""))[:width]
         elif "_msb" in name:
-            field = getattr(obj, name.replace("_msb", ""))[width:2*width]
+            field = getattr(obj, name.replace("_msb", ""))[width:2 * width]
         else:
             field = getattr(obj, name)
         return field
@@ -114,8 +114,8 @@ class Header:
     def encode(self, obj, signal):
         r = []
         for k, v in sorted(self.fields.items()):
-            start = v.byte*8+v.offset
-            end = start+v.width
+            start = v.byte * 8 + v.offset
+            end = start + v.width
             field = self.get_field(obj, k, v.width)
             if self.swap_field_bytes:
                 field = reverse_bytes(field)
@@ -125,8 +125,8 @@ class Header:
     def decode(self, signal, obj):
         r = []
         for k, v in sorted(self.fields.items()):
-            start = v.byte*8+v.offset
-            end = start+v.width
+            start = v.byte * 8 + v.offset
+            end = start + v.width
             field = self.get_field(obj, k, v.width)
             if self.swap_field_bytes:
                 r.append(field.eq(reverse_bytes(signal[start:end])))
@@ -139,14 +139,14 @@ class Packetizer(Module):
     def __init__(self, sink_description, source_description, header):
         self.sink = sink = Sink(sink_description)
         self.source = source = Source(source_description)
-        self.header = Signal(header.length*8)
+        self.header = Signal(header.length * 8)
 
         # # #
 
         dw = flen(self.sink.data)
 
-        header_reg = Signal(header.length*8)
-        header_words = (header.length*8)//dw
+        header_reg = Signal(header.length * 8)
+        header_words = (header.length  * 8) // dw
         load = Signal()
         shift = Signal()
         counter = Counter(max=max(header_words, 2))
@@ -196,11 +196,11 @@ class Packetizer(Module):
                 source.stb.eq(1),
                 source.sop.eq(0),
                 source.eop.eq(0),
-                source.data.eq(header_reg[dw:2*dw]),
+                source.data.eq(header_reg[dw:2 * dw]),
                 If(source.stb & source.ack,
                     shift.eq(1),
                     counter.ce.eq(1),
-                    If(counter.value == header_words-2,
+                    If(counter.value == header_words - 2,
                         NextState("COPY")
                     )
                 )
@@ -224,13 +224,13 @@ class Depacketizer(Module):
     def __init__(self, sink_description, source_description, header):
         self.sink = sink = Sink(sink_description)
         self.source = source = Source(source_description)
-        self.header = Signal(header.length*8)
+        self.header = Signal(header.length * 8)
 
         # # #
 
         dw = flen(sink.data)
 
-        header_words = (header.length*8)//dw
+        header_words = (header.length * 8) // dw
 
         shift = Signal()
         counter = Counter(max=max(header_words, 2))
@@ -269,7 +269,7 @@ class Depacketizer(Module):
                 If(sink.stb,
                     counter.ce.eq(1),
                     shift.eq(1),
-                    If(counter.value == header_words-2,
+                    If(counter.value == header_words - 2,
                         NextState("COPY")
                     )
                 )

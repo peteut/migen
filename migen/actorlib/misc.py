@@ -1,7 +1,7 @@
-from migen.fhdl.std import *
-from migen.genlib.record import *
-from migen.genlib.fsm import *
-from migen.flow.actor import *
+from migen.fhdl.std import Module, Signal, If, ModuleTransformer
+from migen.genlib.fsm import FSM, NextState
+from migen.genlib.record import Record
+from migen.flow.actor import Source, Sink, get_endpoints
 from migen.flow.plumbing import Buffer
 
 
@@ -33,15 +33,14 @@ class IntSequence(Module):
             self.comb += last.eq(counter + 1 == maximum)
         self.sync += [
             If(load,
-                counter.eq(0),
-                maximum.eq(self.parameters.maximum),
-                offset.eq(self.parameters.offset) if offsetbits else None
-            ).Elif(ce,
-                If(last,
-                    counter.eq(0)
-                ).Else(
-                    counter.eq(counter + step)
-                )
+               counter.eq(0),
+               maximum.eq(self.parameters.maximum),
+               offset.eq(self.parameters.offset) if offsetbits else None
+               ).Elif(
+                   ce,
+                   If(last,
+                      counter.eq(0)
+                      ).Else(counter.eq(counter + step))
             )
         ]
         if offsetbits:
@@ -51,19 +50,21 @@ class IntSequence(Module):
 
         fsm = FSM()
         self.submodules += fsm
-        fsm.act("IDLE",
+        fsm.act(
+            "IDLE",
             load.eq(1),
             self.parameters.ack.eq(1),
             If(self.parameters.stb, NextState("ACTIVE"))
         )
-        fsm.act("ACTIVE",
+        fsm.act(
+            "ACTIVE",
             self.busy.eq(1),
             self.source.stb.eq(1),
             If(self.source.ack,
-                ce.eq(1),
-                If(last, NextState("IDLE"))
-            )
+               ce.eq(1),
+               If(last, NextState("IDLE")))
         )
+
 
 # Add buffers on Endpoints (can be used to improve timings)
 class BufferizeEndpoints(ModuleTransformer):
