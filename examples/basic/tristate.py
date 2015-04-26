@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal, TSTriple
 from migen.fhdl import verilog
 
 
@@ -9,4 +9,6 @@ class Example(Module):
         self.specials += self.t.get_tristate(self.pad)
 
 e = Example()
-print(verilog.convert(e, ios={e.pad, e.t.o, e.t.oe, e.t.i}))
+
+if __name__ == "__main__":
+    print(verilog.convert(e, ios={e.pad, e.t.o, e.t.oe, e.t.i}))

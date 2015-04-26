@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Memory, StopSimulation
 from migen.sim.generic import run_simulation
 
 
@@ -6,7 +6,7 @@ class Mem(Module):
     def __init__(self):
         # Initialize the beginning of the memory with integers
         # from 0 to 19.
-        self.specials.mem = Memory(16, 2**12, init=list(range(20)))
+        self.specials.mem = Memory(16, 2 ** 12, init=list(range(20)))
 
     def do_simulation(self, selfp):
         # Read the memory. Use the cycle counter as address.

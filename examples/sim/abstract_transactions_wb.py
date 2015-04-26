@@ -1,7 +1,7 @@
 from random import Random
 
-from migen.fhdl.std import *
-from migen.bus.transactions import *
+from migen.fhdl.std import Module
+from migen.bus.transactions import TRead, TWrite
 from migen.bus import wishbone
 from migen.sim.generic import run_simulation
 
@@ -13,9 +13,9 @@ def my_generator():
 
     # Write to the first addresses.
     for x in range(10):
-        t = TWrite(x, 2*x)
+        t = TWrite(x, 2 * x)
         yield t
-        print("Wrote in " + str(t.latency) + " cycle(s)")
+        print("Wrote in {.latency} cycle(s)".format(t))
         # Insert some dead cycles to simulate bus inactivity.
         for delay in range(prng.randrange(0, 3)):
             yield None
@@ -24,7 +24,7 @@ def my_generator():
     for x in range(10):
         t = TRead(x)
         yield t
-        print("Read " + str(t.data) + " in " + str(t.latency) + " cycle(s)")
+        print("Read {0.data} in {0.latency} cycle(s)".format(t))
         for delay in range(prng.randrange(0, 3)):
             yield None
 
@@ -54,7 +54,8 @@ class TB(Module):
         # and displays the transactions on the console (<TRead...>/<TWrite...>).
         self.submodules.tap = wishbone.Tap(self.slave.bus)
         # Connect the master to the slave.
-        self.submodules.intercon = wishbone.InterconnectPointToPoint(self.master.bus, self.slave.bus)
+        self.submodules.intercon = wishbone.InterconnectPointToPoint(
+            self.master.bus, self.slave.bus)
 
 if __name__ == "__main__":
     run_simulation(TB())

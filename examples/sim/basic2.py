@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal, If
 from migen.sim.generic import run_simulation
 
 
@@ -20,8 +20,8 @@ class Counter(Module):
             selfp.ce = 0  # This is how you write to a signal.
         else:
             selfp.ce = 1
-        print("Cycle: " + str(selfp.simulator.cycle_counter) + " Count: " + \
-            str(selfp.count))
+        print("Cycle: {} Count: {}".format(selfp.simulator.cycle_counter,
+                                           selfp.count))
 
 # Output is:
 # Cycle: 0 Count: -5

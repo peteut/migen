@@ -2,7 +2,7 @@ from math import cos, pi
 from scipy import signal
 import matplotlib.pyplot as plt
 
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal
 from migen.fhdl import verilog
 from migen.genlib.misc import optree
 from migen.sim.generic import run_simulation
@@ -24,11 +24,11 @@ class FIR(Module):
             sreg = Signal((self.wsize, True))
             self.sync += sreg.eq(src)
             src = sreg
-            c_fp = int(c*2**(self.wsize - 1))
-            muls.append(c_fp*sreg)
-        sum_full = Signal((2*self.wsize-1, True))
+            c_fp = int(c * 2 ** (self.wsize - 1))
+            muls.append(c_fp * sreg)
+        sum_full = Signal((2 * self.wsize - 1, True))
         self.sync += sum_full.eq(optree("+", muls))
-        self.comb += self.o.eq(sum_full[self.wsize-1:])
+        self.comb += self.o.eq(sum_full[self.wsize - 1:])
 
 
 # A test bench for our FIR filter.
@@ -41,11 +41,11 @@ class TB(Module):
         self.outputs = []
 
     def do_simulation(self, selfp):
-        f = 2**(self.fir.wsize - 1)
-        v = 0.1*cos(2*pi*self.frequency*selfp.simulator.cycle_counter)
-        selfp.fir.i = int(f*v)
+        f = 2 ** (self.fir.wsize - 1)
+        v = 0.1 * cos(2 * pi * self.frequency * selfp.simulator.cycle_counter)
+        selfp.fir.i = int(f * v)
         self.inputs.append(v)
-        self.outputs.append(selfp.fir.o/f)
+        self.outputs.append(selfp.fir.o / f)
 
 if __name__ == "__main__":
     # Compute filter coefficients with SciPy.

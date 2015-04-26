@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal
 from migen.fhdl import verilog
 from migen.genlib.misc import optree
 
@@ -39,4 +39,5 @@ class Example(Module):
                 allsigs.extend(obj.sigs)
         self.comb += output.eq(optree("|", allsigs))
 
-print(verilog.convert(Example()))
+if __name__ == "__main__":
+    print(verilog.convert(Example()))

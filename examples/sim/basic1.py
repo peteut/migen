@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal
 from migen.sim.generic import run_simulation
 
 
@@ -20,7 +20,7 @@ class Counter(Module):
         # Count: 1
         # Count: 2
         # ...
-        print("Count: " + str(selfp.count))
+        print("Count: {}".format(selfp.count))
 
 if __name__ == "__main__":
     dut = Counter()

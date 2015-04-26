@@ -1,8 +1,8 @@
-from migen.fhdl.std import *
-from migen.flow.actor import *
-from migen.flow.transactions import *
-from migen.flow.network import *
-from migen.actorlib.sim import *
+from migen.fhdl.std import Module, StopSimulation
+from migen.flow.actor import Source, Sink
+from migen.flow.transactions import Token
+from migen.flow.network import DataFlowGraph, CompositeActor
+from migen.actorlib.sim import SimActor
 from migen.sim.generic import run_simulation
 
 
@@ -15,20 +15,20 @@ def source_gen():
 class SimSource(SimActor):
     def __init__(self):
         self.source = Source([("value", 32)])
-        SimActor.__init__(self, source_gen())
+        super().__init__(source_gen())
 
 
 def sink_gen():
     while True:
         t = Token("sink")
         yield t
-        print("Received: " + str(t.value["value"]))
+        print("Received: {}".format(t.value["value"]))
 
 
 class SimSink(SimActor):
     def __init__(self):
         self.sink = Sink([("value", 32)])
-        SimActor.__init__(self, sink_gen())
+        super().__init__(sink_gen())
 
 
 class TB(Module):

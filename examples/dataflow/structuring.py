@@ -3,17 +3,17 @@ from itertools import count
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from migen.flow.network import *
-from migen.flow.transactions import *
+from migen.flow.network import DataFlowGraph
+from migen.flow.transactions import Token
 from migen.actorlib import structuring
-from migen.actorlib.sim import *
+from migen.actorlib.sim import SimActor
 from migen.flow import perftools
 from migen.sim.generic import run_simulation
 
 pack_factor = 5
 base_layout = [("value", 32)]
 packed_layout = structuring.pack_layout(base_layout, pack_factor)
-rawbits_layout = [("value", 32*pack_factor)]
+rawbits_layout = [("value", 32 * pack_factor)]
 
 
 def source_gen():
@@ -24,7 +24,7 @@ def source_gen():
 class SimSource(SimActor):
     def __init__(self):
         self.source = Source(base_layout)
-        SimActor.__init__(self, source_gen())
+        super().__init__(source_gen())
 
 
 def sink_gen():
@@ -37,7 +37,7 @@ def sink_gen():
 class SimSink(SimActor):
     def __init__(self):
         self.sink = Sink(base_layout)
-        SimActor.__init__(self, sink_gen())
+        super().__init__(sink_gen())
 
 
 class TB(Module):

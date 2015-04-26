@@ -1,7 +1,8 @@
-from migen.flow.network import *
-from migen.flow.transactions import *
+from migen.flow.network import DataFlowGraph, CompositeActor
+from migen.flow.transactions import Token
+from migen.flow.actor import Source, Sink
 from migen.actorlib import misc
-from migen.actorlib.sim import *
+from migen.actorlib.sim import SimActor
 from migen.sim.generic import run_simulation
 
 
@@ -15,7 +16,7 @@ def source_gen():
 class SimSource(SimActor):
     def __init__(self):
         self.source = Source([("maximum", 32)])
-        SimActor.__init__(self, source_gen())
+        super().__init__(source_gen())
 
 
 def sink_gen():
@@ -28,7 +29,7 @@ def sink_gen():
 class SimSink(SimActor):
     def __init__(self):
         self.sink = Sink([("value", 32)])
-        SimActor.__init__(self, sink_gen())
+        super().__init__(sink_gen())
 
 if __name__ == "__main__":
     source = SimSource()

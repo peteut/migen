@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import (Module, Signal)
 from migen.fhdl import verilog
 from migen.genlib.cdc import MultiReg
 from migen.bank import description, csrgen
@@ -24,6 +24,8 @@ class Example(Module):
 
 example = Example()
 i = example.bank.bus
-v = verilog.convert(example, {i.dat_r, i.adr, i.we, i.dat_w,
-    example.gpio_in, example.gpio_out})
-print(v)
+
+if __name__ == "__main__":
+    v = verilog.convert(example, {i.dat_r, i.adr, i.we, i.dat_w,
+                                  example.gpio_in, example.gpio_out})
+    print(v)

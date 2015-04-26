@@ -1,5 +1,5 @@
 from migen.fhdl import verilog
-from migen.fhdl.std import *
+from migen.fhdl.std import Module, Signal, bits_for
 from migen.genlib.mhamgen import HammingGenerator, HammingChecker
 
 
@@ -34,4 +34,6 @@ class gen_check(Module):
         self.io.add(hc.data_out)
 
 gc = gen_check()
-print(verilog.convert(gc, gc.io, name="gen_check"))
+
+if __name__ == "__main__":
+    print(verilog.convert(gc, gc.io, name="gen_check"))
