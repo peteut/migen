@@ -13,6 +13,7 @@ install:
   # Install verilator package
   - sudo apt-get install verilator
   - verilator --version; true
+  - pip install .
 
 script:
   # Run tests
