@@ -13,10 +13,14 @@ install:
   # Install verilator package
   - sudo apt-get install verilator
   - verilator --version; true
+  - pip install -r dev-requirements.txt
   - pip install .
 
 script:
   # Run tests
-  - python setup.py test
+  - nose2 -v --with-coverage
   # Generate HTML documentation
   - make -C doc html
+
+after_success:
+  - coveralls

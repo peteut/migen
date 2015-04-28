@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/peteut/migen.svg)](
 https://travis-ci.org/peteut/migen)
+[![Coverage Status](https://coveralls.io/repos/peteut/migen/badge.svg)](
+https://coveralls.io/r/peteut/migen)
 
 #### A Python toolbox for building complex digital hardware
 
