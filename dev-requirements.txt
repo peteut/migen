@@ -4,3 +4,6 @@ cov-core
 coverage
 six
 coveralls
+sphinx
+sphinx-bootstrap-theme
+sphinxcontrib-napoleon

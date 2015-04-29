@@ -12,11 +12,12 @@
 # serve to show the default.
 
 import sys, os
+import sphinx_bootstrap_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('.'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -30,7 +31,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.autosummary',
-    'numpydoc',  # to preprocess docstrings
+    'sphinx.ext.napoleon',  # to preprocess docstrings
     ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -46,8 +47,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Migen'
-copyright = u'2012, Sebastien Bourdeauducq'
+project = 'Migen'
+copyright = '2012, Sebastien Bourdeauducq'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -98,15 +99,20 @@ numpydoc_show_class_members = False
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = 'bootstrap'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    'navbar_site_name': 'Site',
+    'navbar_pagenav_name': 'Page',
+    'navbar_class': 'navbar',
+    'bootstrap_version': '3',
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
