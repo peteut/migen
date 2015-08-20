@@ -16,17 +16,17 @@ _io = [
     ("serial", 0,
         Subsignal("tx", Pins("A10")),
         Subsignal("rx", Pins("A11"), Misc("PULLUP")),
-        Subsignal("rts", Pins("C10")),
-        Subsignal("cts", Pins("A9"), Misc("PULLUP")),
+        Subsignal("cts", Pins("C10"), Misc("PULLUP")),
+        Subsignal("rts", Pins("A9"), Misc("PULLUP")),
         IOStandard("LVTTL"),
     ),
 
     ("usb_fifo", 0,
         Subsignal("data", Pins("A11 A10 C10 A9 B9 A8 B8 A7")),
-        Subsignal("rxf", Pins("C7")),
-        Subsignal("txe", Pins("A6")),
-        Subsignal("rd", Pins("B6")),
-        Subsignal("wr", Pins("A5")),
+        Subsignal("rxf_n", Pins("C7")),
+        Subsignal("txe_n", Pins("A6")),
+        Subsignal("rd_n", Pins("B6")),
+        Subsignal("wr_n", Pins("A5")),
         Subsignal("siwua", Pins("C5")),
         IOStandard("LVTTL"),
     ),
@@ -130,7 +130,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 20
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc6slx45-csg324-2", _io, _connectors)
+        XilinxPlatform.__init__(self, "xc6slx45-csg324-3", _io, _connectors)
         self.toolchain.bitgen_opt += " -g Compress -g ConfigRate:6"
 
     def create_programmer(self):

@@ -29,6 +29,11 @@ _io = [
         Subsignal("p", Pins("L25"), IOStandard("LVDS_25")),
         Subsignal("n", Pins("K25"), IOStandard("LVDS_25"))
     ),
+    ("user_sma_clock_p", 0, Pins("L25"), IOStandard("LVCMOS25")),
+    ("user_sma_clock_n", 0, Pins("K25"), IOStandard("LVCMOS25")),
+
+    ("user_sma_gpio_p", 0, Pins("Y23"), IOStandard("LVCMOS33")),
+    ("user_sma_gpio_n", 0, Pins("Y24"), IOStandard("LVCMOS33")),
 
     ("clk200", 0,
         Subsignal("p", Pins("AD12"), IOStandard("LVDS")),
@@ -186,8 +191,7 @@ _io = [
 ]
 
 _connectors = [
-    ("HPC",
-        {
+    ("HPC", {
         "DP1_M2C_P": "D6",
         "DP1_M2C_N": "D5",
         "DP2_M2C_P": "B6",
@@ -332,8 +336,7 @@ _connectors = [
         "HA23_N": "L13",
         }
     ),
-    ("LPC",
-        {
+    ("LPC", {
         "GBTCLK0_M2C_P": "N8",
         "GBTCLK0_M2C_N": "N7",
         "LA01_CC_P": "AE23",

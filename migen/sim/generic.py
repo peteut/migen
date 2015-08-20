@@ -1,4 +1,5 @@
 import warnings
+import sys
 
 from migen.fhdl.std import ClockDomain, Memory, flen, StopSimulation
 from migen.fhdl.structure import _Fragment
@@ -26,6 +27,9 @@ class TopLevel:
         self.ios = {cd.clk, cd.rst}
 
     def get(self, sockaddr):
+        if sys.platform == "win32":
+            sockaddr = sockaddr[0]  # Get the IP address only
+
         template1 = """`timescale 1ns / 1ps
 
 module {top_name}();
@@ -85,7 +89,12 @@ class Simulator:
         if sim_runner is None:
             sim_runner = icarus.Runner()
         self.top_level = top_level
-        self.ipc = Initiator(sockaddr)
+        if sys.platform == "win32":
+            sockaddr = ("127.0.0.1", 50007)
+            self.ipc = Initiator(sockaddr)
+        else:
+            self.ipc = Initiator(sockaddr)
+
         self.sim_runner = sim_runner
 
         c_top = self.top_level.get(sockaddr)
@@ -223,3 +232,4 @@ class Simulator:
 def run_simulation(fragment, ncycles=None, vcd_name=None, **kwargs):
     with Simulator(fragment, TopLevel(vcd_name), icarus.Runner(**kwargs)) as s:
         s.run(ncycles)
+

@@ -3,11 +3,15 @@
 
 import socket
 import os
+import sys
+import struct
+
+if sys.platform == "win32":
+    header_len = 2
 
 #
 # Message classes
 #
-
 
 class Int32(int):
     pass
@@ -56,10 +60,10 @@ class MessageReadReply(Message):
 message_classes = [MessageTick, MessageGo, MessageWrite, MessageRead,
                    MessageReadReply]
 
+
 #
 # Packing
 #
-
 
 def _pack_int(v):
     if v == 0:
@@ -77,6 +81,11 @@ def _pack_str(v):
     p = [ord(c) for c in v]
     p.append(0)
     return p
+
+
+def _pack_int16(v):
+    return [v & 0xff,
+            (v & 0xff00) >> 8]
 
 
 def _pack_int32(v):
@@ -101,12 +110,15 @@ def _pack(message):
             r += _pack_int32(value)
         else:
             raise TypeError
+    if sys.platform == "win32":
+        size = _pack_int16(len(r) + header_len)
+        r = size + r
     return bytes(r)
+
 
 #
 # Unpacking
 #
-
 
 def _unpack_int(i, nchunks=None):
     v = 0
@@ -145,10 +157,10 @@ def _unpack(message):
         pvalues.append(v)
     return msgclass(*pvalues)
 
+
 #
 # I/O
 #
-
 
 class PacketTooLarge(Exception):
     pass
@@ -157,10 +169,15 @@ class PacketTooLarge(Exception):
 class Initiator:
     def __init__(self, sockaddr):
         self.sockaddr = sockaddr
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
-        self._cleanup_file()
+        if sys.platform == "win32":
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+            self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+            self._cleanup_file()
         self.socket.bind(self.sockaddr)
         self.socket.listen(1)
+
+        self.ipc_rxbuffer = bytearray()
 
     def _cleanup_file(self):
         try:
@@ -174,9 +191,22 @@ class Initiator:
     def send(self, message):
         self.conn.send(_pack(message))
 
+    def recv_packet(self, maxlen):
+        if sys.platform == "win32":
+            while len(self.ipc_rxbuffer) < header_len:
+                self.ipc_rxbuffer += self.conn.recv(maxlen)
+            packet_len = struct.unpack("<H", self.ipc_rxbuffer[:header_len])[0]
+            while len(self.ipc_rxbuffer) < packet_len:
+                self.ipc_rxbuffer += self.conn.recv(maxlen)
+            packet = self.ipc_rxbuffer[header_len:packet_len]
+            self.ipc_rxbuffer = self.ipc_rxbuffer[packet_len:]
+        else:
+            packet = self.conn.recv(maxlen)
+        return packet
+
     def recv(self):
         maxlen = 2048
-        packet = self.conn.recv(maxlen)
+        packet = self.recv_packet(maxlen)
         if len(packet) < 1:
             return None
         if len(packet) >= maxlen:
@@ -188,6 +218,12 @@ class Initiator:
             self.conn.shutdown(socket.SHUT_RDWR)
             self.conn.close()
         if hasattr(self, "socket"):
-            self.socket.shutdown(socket.SHUT_RDWR)
-            self.socket.close()
-        self._cleanup_file()
+            if sys.platform == "win32":
+                # don't shutdown our socket since closing connection
+                # seems to already have done it. (trigger an error
+                # otherwise)
+                self.socket.close()
+            else:
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
+                self._cleanup_file()

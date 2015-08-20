@@ -191,7 +191,15 @@ class _BasicLowerer(_Lowerer):
         return self.clock_domains[node.cd].clk
 
     def visit_ResetSignal(self, node):
-        return self.clock_domains[node.cd].rst
+        rst = self.clock_domains[node.cd].rst
+        if rst is None:
+            if node.allow_reset_less:
+                return 0
+            else:
+                raise ValueError("Attempted to get reset signal of resetless"
+                                 " domain '{}'".format(node.cd))
+        else:
+            return rst
 
 
 class _ComplexSliceLowerer(_Lowerer):
@@ -256,12 +264,13 @@ def rename_clock_domain_expr(f, old, new):
 
 def rename_clock_domain(f, old, new):
     rename_clock_domain_expr(f, old, new)
-    if old in f.sync:
-        if new in f.sync:
-            f.sync[new].extend(f.sync[old])
-        else:
-            f.sync[new] = f.sync[old]
-        del f.sync[old]
+    if new != old:
+        if old in f.sync:
+            if new in f.sync:
+                f.sync[new].extend(f.sync[old])
+            else:
+                f.sync[new] = f.sync[old]
+            del f.sync[old]
     for special in f.specials:
         special.rename_clock_domain(old, new)
     try:
