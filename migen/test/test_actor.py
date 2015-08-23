@@ -19,7 +19,7 @@ class SimSource(SimActor):
     def __init__(self):
         self.source = Source([("value", 32)])
         self.sent = []
-        SimActor.__init__(self, source_gen(self.sent))
+        super().__init__(source_gen(self.sent))
 
 
 def sink_gen(received):
@@ -33,7 +33,7 @@ class SimSink(SimActor):
     def __init__(self):
         self.sink = Sink([("value", 32)])
         self.received = []
-        SimActor.__init__(self, sink_gen(self.received))
+        super().__init__(sink_gen(self.received))
 
 
 class SourceSinkCase(SimCase, unittest.TestCase):

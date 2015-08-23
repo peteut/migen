@@ -1,7 +1,7 @@
 # This file is Copyright (c) 2013 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.altera import AlteraPlatform
 from mibuild.altera.programmer import USBBlaster
 
@@ -96,7 +96,7 @@ class Platform(AlteraPlatform):
     default_clk_period = 20
 
     def __init__(self):
-        AlteraPlatform.__init__(self, "EP4CE22F17C6", _io)
+        super().__init__("EP4CE22F17C6", _io)
 
     def create_programmer(self):
         return USBBlaster()

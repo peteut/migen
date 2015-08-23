@@ -1,4 +1,4 @@
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Slice, _Assign
 from migen.fhdl.visit import NodeVisitor, NodeTransformer
 from migen.fhdl.bitcontainer import value_bits_sign
@@ -170,7 +170,7 @@ class _Lowerer(NodeTransformer):
 class _BasicLowerer(_Lowerer):
     def __init__(self, clock_domains):
         self.clock_domains = clock_domains
-        _Lowerer.__init__(self)
+        super().__init__()
 
     def visit_ArrayProxy(self, node):
         # TODO: rewrite without variables

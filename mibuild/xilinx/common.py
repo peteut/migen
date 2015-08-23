@@ -2,11 +2,11 @@ import os
 import sys
 from distutils.version import StrictVersion
 
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.specials import SynthesisDirective
-from migen.genlib.cdc import *
+from migen.genlib.cdc import *  # noqa
 from migen.genlib.resetsync import AsyncResetSynchronizer
-from migen.genlib.io import *
+from migen.genlib.io import *  # noqa
 from mibuild import tools
 
 
@@ -52,7 +52,7 @@ class XilinxNoRetiming:
 
 class XilinxMultiRegImpl(MultiRegImpl):
     def __init__(self, *args, **kwargs):
-        MultiRegImpl.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.specials += [SynthesisDirective("attribute shreg_extract of {r} is no", r=r)
             for r in self.regs]
 

@@ -1,6 +1,6 @@
-from migen.fhdl.std import *
-from migen.flow.actor import *
-from migen.genlib.record import *
+from migen.fhdl.std import *  # noqa
+from migen.flow.actor import *  # noqa
+from migen.genlib.record import *  # noqa
 from migen.genlib.misc import optree
 
 
@@ -8,7 +8,7 @@ class Buffer(PipelinedActor):
     def __init__(self, layout):
         self.d = Sink(layout)
         self.q = Source(layout)
-        PipelinedActor.__init__(self, 1)
+        super().__init__(1)
         self.sync += \
             If(self.pipe_ce,
                 self.q.payload.eq(self.d.payload),
@@ -22,7 +22,7 @@ class Combinator(Module):
         sinks = []
         for n, r in enumerate(subrecords):
             s = Sink(layout_partial(layout, *r))
-            setattr(self, "sink"+str(n), s)
+            setattr(self, "sink{}".format(n), s)
             sinks.append(s)
         self.busy = Signal()
 
@@ -43,7 +43,7 @@ class Splitter(Module):
         sources = []
         for n, r in enumerate(subrecords):
             s = Source(layout_partial(layout, *r))
-            setattr(self, "source"+str(n), s)
+            setattr(self, "source{}".format(n), s)
             sources.append(s)
         self.busy = Signal()
 
@@ -68,7 +68,7 @@ class Multiplexer(Module):
         sinks = []
         for i in range(n):
             sink = Sink(layout)
-            setattr(self, "sink"+str(i), sink)
+            setattr(self, "sink{}".format(i), sink)
             sinks.append(sink)
         self.busy = Signal()
         self.sel = Signal(max=n)
@@ -87,7 +87,7 @@ class Demultiplexer(Module):
         sources = []
         for i in range(n):
             source = Source(layout)
-            setattr(self, "source"+str(i), source)
+            setattr(self, "source{}".format(i), source)
             sources.append(source)
         self.busy = Signal()
         self.sel = Signal(max=n)

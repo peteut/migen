@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 
 """
 Encoders and decoders between binary and one-hot representation

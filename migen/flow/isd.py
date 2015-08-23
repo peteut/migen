@@ -1,5 +1,5 @@
-from migen.fhdl.std import *
-from migen.bank.description import *
+from migen.fhdl.std import *  # noqa
+from migen.bank.description import *  # noqa
 from migen.flow.hooks import DFGHook
 
 ISD_MAGIC = 0x6ab4
@@ -55,7 +55,7 @@ class DFGReporter(DFGHook, AutoCSR):
 
         ###
 
-        DFGHook.__init__(self, dfg,
+        super().__init__(dfg,
             lambda u, ep, v: EndpointReporter(getattr(u, ep), nbits))
         hooks = list(self.hooks_iter())
 

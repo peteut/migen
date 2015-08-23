@@ -1,11 +1,10 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.specials import Special
-from migen.fhdl.tools import list_signals
 
 
 class DifferentialInput(Special):
     def __init__(self, i_p, i_n, o):
-        Special.__init__(self)
+        super().__init__()
         self.i_p = i_p
         self.i_n = i_n
         self.o = o
@@ -22,7 +21,7 @@ class DifferentialInput(Special):
 
 class DifferentialOutput(Special):
     def __init__(self, i, o_p, o_n):
-        Special.__init__(self)
+        super().__init__()
         self.i = i
         self.o_p = o_p
         self.o_n = o_n
@@ -59,7 +58,7 @@ class CRG(Module):
 
 class DDRInput(Special):
     def __init__(self, i, o1, o2, clk=ClockSignal()):
-        Special.__init__(self)
+        super().__init__()
         self.i = i
         self.o1 = o1
         self.o2 = o2
@@ -78,7 +77,7 @@ class DDRInput(Special):
 
 class DDROutput(Special):
     def __init__(self, i1, i2, o, clk=ClockSignal()):
-        Special.__init__(self)
+        super().__init__()
         self.i1 = i1
         self.i2 = i2
         self.o = o

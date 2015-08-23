@@ -1,7 +1,7 @@
 from collections import defaultdict
 
-from migen.fhdl.std import *
-from migen.flow.actor import *
+from migen.fhdl.std import *  # noqa
+from migen.flow.actor import *  # noqa
 
 
 class EndpointSimHook(Module):
@@ -36,7 +36,7 @@ class DFGHook(Module):
             ep = data["source"]
             h = create(u, ep, v)
             ep_to_hook[ep] = h
-            setattr(self.submodules, "hook"+str(hookn), h)
+            setattr(self.submodules, "hook{}".format(hookn), h)
 
     def hooks_iter(self):
         for v1 in self.nodepair_to_ep.values():

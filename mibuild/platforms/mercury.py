@@ -1,9 +1,8 @@
 # This file is Copyright (c) 2015 William D. Jones <thor0505@comcast.net>
 # License: BSD
 
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
-from mibuild.xilinx.programmer import XC3SProg
 
 
 _io = [
@@ -126,7 +125,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 20
 
     def __init__(self, device="xc3s200a-4-vq100"):
-        XilinxPlatform.__init__(self, device, _io, _connectors)
+        super().__init__(device, _io, _connectors)
         # Small device- optimize for AREA instead of SPEED (LM32 runs at about
         # 60-65MHz in AREA configuration).
         self.toolchain.xst_opt = """-ifmt MIXED

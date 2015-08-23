@@ -16,7 +16,7 @@ class UrJTAG(GenericProgrammer):
     needs_bitreverse = True
 
     def __init__(self, cable, flash_proxy_basename=None):
-        GenericProgrammer.__init__(self, flash_proxy_basename)
+        super().__init__(flash_proxy_basename)
         self.cable = cable
 
     def load_bitstream(self, bitstream_file):
@@ -46,7 +46,7 @@ class XC3SProg(GenericProgrammer):
     needs_bitreverse = False
 
     def __init__(self, cable, flash_proxy_basename=None):
-        GenericProgrammer.__init__(self, flash_proxy_basename)
+        super().__init__(flash_proxy_basename)
         self.cable = cable
 
     def load_bitstream(self, bitstream_file):
@@ -54,7 +54,8 @@ class XC3SProg(GenericProgrammer):
 
     def flash(self, address, data_file):
         flash_proxy = self.find_flash_proxy()
-        subprocess.call(["xc3sprog", "-v", "-c", self.cable, "-I"+flash_proxy, "{}:w:0x{:x}:BIN".format(data_file, address)])
+        subprocess.call(["xc3sprog", "-v", "-c", self.cable, "-I" + flash_proxy,
+                         "{}:w:0x{:x}:BIN".format(data_file, address)])
 
 
 
@@ -62,7 +63,7 @@ class FpgaProg(GenericProgrammer):
     needs_bitreverse = False
 
     def __init__(self, flash_proxy_basename=None):
-        GenericProgrammer.__init__(self, flash_proxy_basename)
+        super().__init__(flash_proxy_basename)
 
     def load_bitstream(self, bitstream_file):
         subprocess.call(["fpgaprog", "-v", "-f", bitstream_file])
@@ -122,7 +123,7 @@ def _run_vivado(path, ver, cmds):
 class VivadoProgrammer(GenericProgrammer):
     needs_bitreverse = False
     def __init__(self, vivado_path="/opt/Xilinx/Vivado", vivado_ver=None):
-        GenericProgrammer.__init__(self)
+        super().__init__()
         self.vivado_path = vivado_path
         self.vivado_ver = vivado_ver
 
@@ -182,7 +183,7 @@ class Adept(GenericProgrammer):
     needs_bitreverse = False
 
     def __init__(self, board, index, flash_proxy_basename=None):
-        GenericProgrammer.__init__(self, flash_proxy_basename)
+        super().__init__(flash_proxy_basename)
         self.board = board
         self.index = index
 

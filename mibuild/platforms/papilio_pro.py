@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 from mibuild.xilinx.programmer import XC3SProg
 
@@ -55,7 +55,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 31.25
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc6slx9-tqg144-2", _io, _connectors)
+        super().__init__("xc6slx9-tqg144-2", _io, _connectors)
 
     def create_programmer(self):
         return XC3SProg("papilio", "bscan_spi_lx9_papilio.bit")

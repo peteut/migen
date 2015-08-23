@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 
 
 class Divider(Module):
@@ -12,16 +12,16 @@ class Divider(Module):
 
         ###
 
-        qr = Signal(2*w)
-        counter = Signal(max=w+1)
+        qr = Signal(2 * w)
+        counter = Signal(max=w + 1)
         divisor_r = Signal(w)
-        diff = Signal(w+1)
+        diff = Signal(w + 1)
 
         self.comb += [
             self.quotient_o.eq(qr[:w]),
             self.remainder_o.eq(qr[w:]),
             self.ready_o.eq(counter == 0),
-            diff.eq(qr[w-1:] - divisor_r)
+            diff.eq(qr[w - 1:] - divisor_r)
         ]
         self.sync += [
             If(self.start_i,
@@ -30,9 +30,9 @@ class Divider(Module):
                 divisor_r.eq(self.divisor_i)
             ).Elif(~self.ready_o,
                     If(diff[w],
-                        qr.eq(Cat(0, qr[:2*w-1]))
+                        qr.eq(Cat(0, qr[:2 * w - 1]))
                     ).Else(
-                        qr.eq(Cat(1, qr[:w-1], diff[:w]))
+                        qr.eq(Cat(1, qr[:w - 1], diff[:w]))
                     ),
                     counter.eq(counter - 1)
             )

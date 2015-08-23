@@ -1,6 +1,6 @@
 from copy import copy
 
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Operator, _Slice, _Assign, _ArrayProxy, _Fragment
 
 

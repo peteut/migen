@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 
 _io = [
@@ -117,11 +117,11 @@ class Platform(XilinxPlatform):
     default_clk_period = 15.625
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc3s1400a-ft256-4", _io)
+        super().__init__("xc3s1400a-ft256-4", _io)
         self.toolchain.bitgen_opt = "-g LCK_cycle:6 -g Binary:Yes -w -g UnusedPin:PullUp"
 
     def do_finalize(self, fragment):
-        XilinxPlatform.do_finalize(self, fragment)
+        super().do_finalize(fragment)
 
         self.add_platform_command("""
 TIMESPEC TS_Pad2Pad = FROM PADS TO PADS 7 ns;

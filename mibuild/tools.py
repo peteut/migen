@@ -28,7 +28,7 @@ def write_to_file(filename, contents, force_unix=False):
 
 
 def arch_bits():
-    return struct.calcsize("P")*8
+    return struct.calcsize("P") * 8
 
 
 def versions(path):

@@ -1,10 +1,10 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.genlib.cdc import NoRetiming, MultiReg, GrayCounter
 from migen.genlib.record import layout_len, Record
 
 
 def _inc(signal, modulo):
-    if modulo == 2**flen(signal):
+    if modulo == 2 ** flen(signal):
         return signal.eq(signal + 1)
     else:
         return If(signal == (modulo - 1),
@@ -83,9 +83,9 @@ class SyncFIFO(Module, _FIFOInterface):
     __doc__ = __doc__.format(interface=_FIFOInterface.__doc__)
 
     def __init__(self, width_or_layout, depth, fwft=True):
-        _FIFOInterface.__init__(self, width_or_layout, depth)
+        super().__init__(width_or_layout, depth)
 
-        self.level = Signal(max=depth+1)
+        self.level = Signal(max=depth + 1)
         self.replace = Signal()
 
         ###
@@ -99,7 +99,7 @@ class SyncFIFO(Module, _FIFOInterface):
         self.specials += wrport
         self.comb += [
             If(self.replace,
-                wrport.adr.eq(produce-1)
+                wrport.adr.eq(produce - 1)
             ).Else(
                 wrport.adr.eq(produce)
             ),
@@ -136,7 +136,7 @@ class SyncFIFO(Module, _FIFOInterface):
 
 class SyncFIFOBuffered(Module, _FIFOInterface):
     def __init__(self, width_or_layout, depth):
-        _FIFOInterface.__init__(self, width_or_layout, depth)
+        super().__init__(width_or_layout, depth)
         self.submodules.fifo = fifo = SyncFIFO(width_or_layout, depth, False)
 
         self.writable = fifo.writable
@@ -145,7 +145,7 @@ class SyncFIFOBuffered(Module, _FIFOInterface):
         self.we = fifo.we
         self.dout_bits = fifo.dout_bits
         self.dout = fifo.dout
-        self.level = Signal(max=depth+2)
+        self.level = Signal(max=depth + 2)
 
         ###
 
@@ -171,26 +171,26 @@ class AsyncFIFO(Module, _FIFOInterface):
     __doc__ = __doc__.format(interface=_FIFOInterface.__doc__)
 
     def __init__(self, width_or_layout, depth):
-        _FIFOInterface.__init__(self, width_or_layout, depth)
+        super().__init__(width_or_layout, depth)
 
         ###
 
         depth_bits = log2_int(depth, True)
 
-        produce = ClockDomainsRenamer("write")(GrayCounter(depth_bits+1))
-        consume = ClockDomainsRenamer("read")(GrayCounter(depth_bits+1))
+        produce = ClockDomainsRenamer("write")(GrayCounter(depth_bits + 1))
+        consume = ClockDomainsRenamer("read")(GrayCounter(depth_bits + 1))
         self.submodules += produce, consume
         self.comb += [
             produce.ce.eq(self.writable & self.we),
             consume.ce.eq(self.readable & self.re)
         ]
 
-        produce_rdomain = Signal(depth_bits+1)
+        produce_rdomain = Signal(depth_bits + 1)
         self.specials += [
             NoRetiming(produce.q),
             MultiReg(produce.q, produce_rdomain, "read")
         ]
-        consume_wdomain = Signal(depth_bits+1)
+        consume_wdomain = Signal(depth_bits + 1)
         self.specials += [
             NoRetiming(consume.q),
             MultiReg(consume.q, consume_wdomain, "write")

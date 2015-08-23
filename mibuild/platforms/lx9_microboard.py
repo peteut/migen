@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 
 _io = [
@@ -106,7 +106,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 10
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc6slx9-2csg324", _io)
+        super().__init__("xc6slx9-2csg324", _io)
         self.add_platform_command("""
 CONFIG VCCAUX = "3.3";
 """)

@@ -1,7 +1,7 @@
 # This file is Copyright (c) 2015 Matt O'Gorman <mog@rldn.net>
 # License: BSD
 
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 from mibuild.xilinx.programmer import XC3SProg, FpgaProg
 
@@ -114,7 +114,7 @@ class Platform(XilinxPlatform):
 
     def __init__(self, device="xc6slx9", programmer="xc3sprog"):
         self.programmer = programmer
-        XilinxPlatform.__init__(self, device+"-3-ftg256", _io, _connectors)
+        super().__init__(device + "-3-ftg256", _io, _connectors)
 
     def create_programmer(self):
         if self.programmer == "xc3sprog":

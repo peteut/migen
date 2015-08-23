@@ -6,10 +6,9 @@ import subprocess
 import shutil
 
 from migen.fhdl.structure import _Fragment
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 
 from mibuild import tools
-from mibuild.lattice import common
 
 
 def _format_constraint(c):
@@ -101,4 +100,5 @@ class LatticeDiamondToolchain:
 
     def add_period_constraint(self, platform, clk, period):
         # TODO: handle differential clk
-        platform.add_platform_command("""FREQUENCY PORT "{clk}" {freq} MHz;""".format(freq=str(float(1/period)*1000), clk="{clk}"), clk=clk)
+        platform.add_platform_command("""FREQUENCY PORT "{clk}" {freq} MHz;""".format(
+            freq=float(1 / period) * 1000, clk="{clk}"), clk=clk)

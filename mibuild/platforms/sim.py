@@ -1,10 +1,10 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.sim import SimPlatform
 
 
 class SimPins(Pins):
     def __init__(self, n):
-        Pins.__init__(self, "s "*n)
+        super().__init__("s " * n)
 
 _io = [
     ("sys_clk", 0, SimPins(1)),
@@ -39,7 +39,7 @@ class Platform(SimPlatform):
     default_clk_period = 1000  # on modern computers simulate at ~ 1MHz
 
     def __init__(self):
-        SimPlatform.__init__(self, "SIM", _io)
+        super().__init__("SIM", _io)
 
     def do_finalize(self, fragment):
         pass

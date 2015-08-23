@@ -1,7 +1,6 @@
 from migen.util.misc import xdir
-from migen.fhdl.std import *
-from migen.genlib.misc import optree
-from migen.genlib.record import *
+from migen.fhdl.std import *  # noqa
+from migen.genlib.record import *  # noqa
 
 
 def _make_m2s(layout):
@@ -50,13 +49,13 @@ class _Endpoint(Record):
             self.description = description_or_layout
         else:
             self.description = EndpointDescription(description_or_layout)
-        Record.__init__(self, self.description.get_full_layout())
+        super().__init__(self.description.get_full_layout())
 
     def __getattr__(self, name):
         try:
-            return getattr(object.__getattribute__(self, "payload"), name)
+            return getattr(super().__getattribute__("payload"), name)
         except:
-            return getattr(object.__getattribute__(self, "param"), name)
+            return getattr(super().__getattribute__("param"), name)
 
 
 class Source(_Endpoint):
@@ -114,11 +113,11 @@ class CombinatorialActor(BinaryActor):
 class SequentialActor(BinaryActor):
     def __init__(self, delay):
         self.trigger = Signal()
-        BinaryActor.__init__(self, delay)
+        super().__init__(delay)
 
     def build_binary_control(self, sink, source, delay):
         ready = Signal()
-        timer = Signal(max=delay+1)
+        timer = Signal(max=delay + 1)
         self.comb += ready.eq(timer == 0)
         self.sync += If(self.trigger,
                 timer.eq(delay)
@@ -147,7 +146,7 @@ class SequentialActor(BinaryActor):
 class PipelinedActor(BinaryActor):
     def __init__(self, latency):
         self.pipe_ce = Signal()
-        BinaryActor.__init__(self, latency)
+        super().__init__(latency)
 
     def build_binary_control(self, sink, source, latency):
         busy = 0

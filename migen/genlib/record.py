@@ -1,8 +1,8 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.tracer import get_obj_var_name
 from migen.genlib.misc import optree
 
-(DIR_NONE, DIR_S_TO_M, DIR_M_TO_S) = range(3)
+DIR_NONE, DIR_S_TO_M, DIR_M_TO_S = range(3)
 
 # Possible layout elements:
 #   1. (name, size)

@@ -6,7 +6,7 @@ class XilinxPlatform(GenericPlatform):
     bitstream_ext = ".bit"
 
     def __init__(self, *args, toolchain="ise", **kwargs):
-        GenericPlatform.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         if toolchain == "ise":
             self.toolchain = ise.XilinxISEToolchain()
         elif toolchain == "vivado":

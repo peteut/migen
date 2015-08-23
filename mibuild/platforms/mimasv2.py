@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 
 
@@ -118,7 +118,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 10
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc6slx9-csg324-2", _io, _connectors)
+        super().__init__("xc6slx9-csg324-2", _io, _connectors)
 
     def create_programmer(self):
         raise NotImplementedError

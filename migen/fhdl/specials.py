@@ -1,8 +1,8 @@
 from operator import itemgetter
 
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 from migen.fhdl.bitcontainer import bits_for, value_bits_sign
-from migen.fhdl.tools import *
+from migen.fhdl.tools import *  # noqa
 from migen.fhdl.tracer import get_obj_var_name
 from migen.fhdl.verilog import _printexpr as verilog_printexpr
 
@@ -35,7 +35,7 @@ class Special(HUID):
 
 class Tristate(Special):
     def __init__(self, target, o, oe, i=None):
-        Special.__init__(self)
+        super().__init__()
         self.target = target
         self.o = o
         self.oe = oe
@@ -94,7 +94,7 @@ class Instance(Special):
         pass
 
     def __init__(self, of, *items, name="", synthesis_directive=None, **kwargs):
-        Special.__init__(self)
+        super().__init__()
         self.of = of
         if name:
             self.name_override = name
@@ -178,7 +178,7 @@ class _MemoryPort(Special):
     def __init__(self, adr, dat_r, we=None, dat_w=None,
       async_read=False, re=None, we_granularity=0, mode=WRITE_FIRST,
       clock_domain="sys"):
-        Special.__init__(self)
+        super().__init__()
         self.adr = adr
         self.dat_r = dat_r
         self.we = we
@@ -209,7 +209,7 @@ class _MemoryPort(Special):
 
 class Memory(Special):
     def __init__(self, width, depth, init=None, name=None):
-        Special.__init__(self)
+        super().__init__()
         self.width = width
         self.depth = depth
         self.ports = []
@@ -225,7 +225,7 @@ class Memory(Special):
         dat_r = Signal(self.width)
         if write_capable:
             if we_granularity:
-                we = Signal(self.width//we_granularity)
+                we = Signal(self.width // we_granularity)
             else:
                 we = Signal()
             dat_w = Signal(self.width)
@@ -250,11 +250,11 @@ class Memory(Special):
                 return ns.get_name(e)
             else:
                 return verilog_printexpr(ns, e)[0]
-        adrbits = bits_for(memory.depth-1)
+        adrbits = bits_for(memory.depth - 1)
 
-        r += "reg [" + str(memory.width-1) + ":0] " \
-            + gn(memory) \
-            + "[0:" + str(memory.depth-1) + "];\n"
+        r += "".join(("reg [{}:0] ".format(memory.width - 1),
+                      gn(memory),
+                      "[0:{}];\n".format(memory.depth - 1)))
 
         adr_regs = {}
         data_regs = {}
@@ -262,54 +262,61 @@ class Memory(Special):
             if not port.async_read:
                 if port.mode == WRITE_FIRST and port.we is not None:
                     adr_reg = Signal(name_override="memadr")
-                    r += "reg [" + str(adrbits-1) + ":0] " \
-                        + gn(adr_reg) + ";\n"
+                    r += "".join(("reg [{}:0] ".format(adrbits - 1),
+                                  gn(adr_reg), ";\n"))
                     adr_regs[id(port)] = adr_reg
                 else:
                     data_reg = Signal(name_override="memdat")
-                    r += "reg [" + str(memory.width-1) + ":0] " \
-                        + gn(data_reg) + ";\n"
+                    r += "".join(("reg [{}:0] ".format(memory.width - 1),
+                                  gn(data_reg), ";\n"))
                     data_regs[id(port)] = data_reg
 
         for port in memory.ports:
-            r += "always @(posedge " + gn(port.clock) + ") begin\n"
+            r += "always @(posedge {}) begin\n".format(gn(port.clock))
             if port.we is not None:
                 if port.we_granularity:
-                    n = memory.width//port.we_granularity
+                    n = memory.width // port.we_granularity
                     for i in range(n):
-                        m = i*port.we_granularity
-                        M = (i+1)*port.we_granularity-1
-                        sl = "[" + str(M) + ":" + str(m) + "]"
-                        r += "\tif (" + gn(port.we) + "[" + str(i) + "])\n"
-                        r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "]" + sl + " <= " + gn(port.dat_w) + sl + ";\n"
+                        m = i * port.we_granularity
+                        M = (i + 1) * port.we_granularity - 1
+                        sl = "[{}:{}]".format(M, m)
+                        r += "\tif ({}[{}])\n".format(gn(port.we), i)
+                        r += "\t\t{}[{}]{} <= {}{};\n".format(
+                            gn(memory), gn(port.adr), sl, gn(port.dat_w), sl)
                 else:
-                    r += "\tif (" + gn(port.we) + ")\n"
-                    r += "\t\t" + gn(memory) + "[" + gn(port.adr) + "] <= " + gn(port.dat_w) + ";\n"
+                    r += "\tif ({})\n".format(gn(port.we))
+                    r += "\t\t{}[{}] <= {};\n".format(
+                        gn(memory), gn(port.adr), gn(port.dat_w))
             if not port.async_read:
                 if port.mode == WRITE_FIRST and port.we is not None:
-                    rd = "\t" + gn(adr_regs[id(port)]) + " <= " + gn(port.adr) + ";\n"
+                    rd = "\t{} <= {};\n".format(
+                        gn(adr_regs[id(port)]), gn(port.adr))
                 else:
-                    bassign = gn(data_regs[id(port)]) + " <= " + gn(memory) + "[" + gn(port.adr) + "];\n"
+                    bassign = "{} <= {}[{}];\n".format(
+                        gn(data_regs[id(port)]), gn(memory), gn(port.adr))
                     if port.mode == READ_FIRST or port.we is None:
                         rd = "\t" + bassign
                     elif port.mode == NO_CHANGE:
-                        rd = "\tif (!" + gn(port.we) + ")\n" \
-                          + "\t\t" + bassign
+                        rd = ("\tif (!{})\n".format(gn(port.we))
+                              + "\t\t" + bassign)
                 if port.re is None:
                     r += rd
                 else:
-                    r += "\tif (" + gn(port.re) + ")\n"
+                    r += "\tif ({})\n".format(gn(port.re))
                     r += "\t" + rd.replace("\n\t", "\n\t\t")
             r += "end\n\n"
 
         for port in memory.ports:
             if port.async_read:
-                r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(port.adr) + "];\n"
+                r += "assign {} = {}[{}];\n".format(
+                    gn(port.dat_r), gn(memory), gn(port.adr))
             else:
                 if port.mode == WRITE_FIRST and port.we is not None:
-                    r += "assign " + gn(port.dat_r) + " = " + gn(memory) + "[" + gn(adr_regs[id(port)]) + "];\n"
+                    r += "assign {} = {}[{}];\n".format(
+                        gn(port.dat_r), gn(memory), gn(adr_regs[id(port)]))
                 else:
-                    r += "assign " + gn(port.dat_r) + " = " + gn(data_regs[id(port)]) + ";\n"
+                    r += "assign {} = {};\n".format(
+                        gn(port.dat_r), gn(data_regs[id(port)]))
         r += "\n"
 
         if memory.init is not None:
@@ -319,7 +326,7 @@ class Memory(Special):
             memory_filename = add_data_file(gn(memory) + ".init", content)
 
             r += "initial begin\n"
-            r += "$readmemh(\"" + memory_filename + "\", " + gn(memory) + ");\n"
+            r += "$readmemh(\"{}\", {});\n".format(memory_filename, gn(memory))
             r += "end\n\n"
 
 
@@ -328,7 +335,7 @@ class Memory(Special):
 
 class SynthesisDirective(Special):
     def __init__(self, template, **signals):
-        Special.__init__(self)
+        super().__init__()
         self.template = template
         self.signals = signals
 
@@ -341,4 +348,4 @@ class SynthesisDirective(Special):
 
 class Keep(SynthesisDirective):
     def __init__(self, signal):
-        SynthesisDirective.__init__(self, "attribute keep of {s} is true", s=signal)
+        super().__init__("attribute keep of {s} is true", s=signal)

@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 from mibuild.xilinx.programmer import UrJTAG
 
@@ -144,7 +144,7 @@ TIMESPEC "TS{phy_rx_clk}_io" = FROM "PADS" TO "GRP{phy_rx_clk}" 10 ns;
             pass
 
         for i in range(2):
-            si = "dviclk"+str(i)
+            si = "dviclk{}".format(i)
             try:
                 self.add_period_constraint(self.lookup_request("dvi_in", i).clk, 26.7)
             except ConstraintError:

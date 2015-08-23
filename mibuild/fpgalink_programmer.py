@@ -42,7 +42,7 @@ class FPGALink(GenericProgrammer):
             Format is vid:pid:did as 4 digit hex numbers.
             Defaults to 1D50:602B:0002 which is the makestuff FPGALink device.
         """
-        GenericProgrammer.__init__(self, flash_proxy_basename)
+        super().__init__(flash_proxy_basename)
         self.initial_vidpid = initial_vidpid
         self.fpgalink_vidpid = fpgalink_vidpid
         self.pin_cfg = pin_cfg
@@ -81,21 +81,21 @@ class FPGALink(GenericProgrammer):
     def load_bitstream(self, bitstream_file):
         n = 27
 
-        xsvf_file = os.path.splitext(bitstream_file)[0]+'.xsvf'
+        xsvf_file = os.path.splitext(bitstream_file)[0] + ".xsvf"
         print("\nGenerating xsvf formatted bitstream")
-        print("="*n)
+        print("=" * n)
         if os.path.exists(xsvf_file):
             os.unlink(xsvf_file)
         _create_xsvf(bitstream_file, xsvf_file)
-        print("\n"+"="*n+"\n")
+        print("\n" + "=" * n + "\n")
 
         print("Programming %s to device." % xsvf_file)
-        print("="*n)
+        print("=" * n)
         handle = self.open_device()
         print("Programming device...")
-        fl.flProgram(handle, "J:"+self.pin_cfg, progFile=xsvf_file)
+        fl.flProgram(handle, "J:" + self.pin_cfg, progFile=xsvf_file)
         print("Programming successful!")
-        print("="*n+"\n")
+        print("=" * n + "\n")
         fl.flClose(handle)
 
     def flash(self, address, data_file):

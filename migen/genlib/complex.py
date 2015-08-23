@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 
 
 class Complex:
@@ -27,10 +27,10 @@ class Complex:
             return Complex(other - self.real, -self.imag)
     def __mul__(self, other):
         if isinstance(other, Complex):
-            return Complex(self.real*other.real - self.imag*other.imag,
-                self.real*other.imag + self.imag*other.real)
+            return Complex(self.real * other.real - self.imag * other.imag,
+                self.real * other.imag + self.imag * other.real)
         else:
-            return Complex(self.real*other, self.imag*other)
+            return Complex(self.real * other, self.imag * other)
     __rmul__ = __mul__
 
     def __lshift__(self, other):

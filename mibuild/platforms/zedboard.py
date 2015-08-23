@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 
 # Bank 34 and 35 voltage depend on J18 jumper setting
@@ -141,4 +141,4 @@ class Platform(XilinxPlatform):
     default_clk_period = 10
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc7z020-clg484-1", _io)
+        super().__init__("xc7z020-clg484-1", _io)

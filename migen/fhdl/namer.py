@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from itertools import combinations
 
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 
 
 class _Node:
@@ -182,7 +182,7 @@ def _build_signal_groups(signals):
             related_list.insert(0, cur_signal)
             cur_signal = cur_signal.related
         # add to groups
-        r += [set()]*(len(related_list) - len(r))
+        r += [set()] * (len(related_list) - len(r))
         for target_set, source_set in zip(r, related_list):
             target_set.add(source_set)
     # with the algorithm above and a list of all signals,

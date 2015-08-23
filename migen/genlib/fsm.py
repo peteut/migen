@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.module import FinalizeError
 from migen.fhdl.visit import NodeTransformer
 from migen.fhdl.bitcontainer import value_bits_sign

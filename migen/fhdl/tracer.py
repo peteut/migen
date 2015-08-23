@@ -9,17 +9,17 @@ def get_var_name(frame):
     call_opc = opname[code.co_code[call_index]]
     if call_opc != "CALL_FUNCTION" and call_opc != "CALL_FUNCTION_VAR":
         return None
-    index = call_index+3
+    index = call_index + 3
     while True:
         opc = opname[code.co_code[index]]
         if opc == "STORE_NAME" or opc == "STORE_ATTR":
-            name_index = int(code.co_code[index+1])
+            name_index = int(code.co_code[index + 1])
             return code.co_names[name_index]
         elif opc == "STORE_FAST":
-            name_index = int(code.co_code[index+1])
+            name_index = int(code.co_code[index + 1])
             return code.co_varnames[name_index]
         elif opc == "STORE_DEREF":
-            name_index = int(code.co_code[index+1])
+            name_index = int(code.co_code[index + 1])
             return code.co_cellvars[name_index]
         elif opc == "LOAD_GLOBAL" or opc == "LOAD_ATTR" or opc == "LOAD_FAST" or opc == "LOAD_DEREF":
             index += 3
@@ -90,7 +90,7 @@ def trace_back(varname=None):
                 if coname == "<module>":
                     modules = frame.f_globals["__name__"]
                     modules = modules.split(".")
-                    coname = modules[len(modules)-1]
+                    coname = modules[len(modules) - 1]
                 coname = remove_underscore(coname)
                 l.insert(0, (coname, name_to_idx[coname]))
                 name_to_idx[coname] += 1

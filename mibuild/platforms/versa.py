@@ -1,7 +1,7 @@
 # This file is Copyright (c) 2013 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.lattice import LatticePlatform
 from mibuild.lattice.programmer import LatticeProgrammer
 
@@ -79,7 +79,7 @@ class Platform(LatticePlatform):
     default_clk_period = 10
 
     def __init__(self):
-        LatticePlatform.__init__(self, "LFE3-35EA-6FN484C", _io)
+        super().__init__("LFE3-35EA-6FN484C", _io)
 
     def do_finalize(self, fragment):
         LatticePlatform.do_finalize(self, fragment)

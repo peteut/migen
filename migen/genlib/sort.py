@@ -1,5 +1,4 @@
-from migen.fhdl.std import *
-from migen.fhdl import verilog
+from migen.fhdl.std import *  # noqa
 
 
 class BitonicSort(Module):
@@ -49,7 +48,7 @@ class BitonicSort(Module):
 
     def _merge(self, i, o, dir, m):
         n = len(i)
-        k = n//2
+        k = n // 2
         if n > 1:
             t = [Signal(m) for j in range(n)]
             for j in range(k):
@@ -61,7 +60,7 @@ class BitonicSort(Module):
 
     def _sort(self, i, o, dir, m):
         n = len(i)
-        k = n//2
+        k = n // 2
         if n > 1:
             t = [Signal(m) for j in range(n)]
             self._sort(i[:k], t[:k], 1, m)  # ascending

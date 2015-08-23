@@ -90,7 +90,7 @@ class Value(HUID):
                 raise IndexError
             if key < 0:
                 key += n
-            return _Slice(self, key, key+1)
+            return _Slice(self, key, key + 1)
         elif isinstance(key, slice):
             start, stop, step = key.indices(n)
             if step != 1:
@@ -121,7 +121,7 @@ class Value(HUID):
 
 class _Operator(Value):
     def __init__(self, op, operands):
-        Value.__init__(self)
+        super().__init__()
         self.op = op
         self.operands = operands
 
@@ -148,7 +148,7 @@ def Mux(sel, val1, val0):
 
 class _Slice(Value):
     def __init__(self, value, start, stop):
-        Value.__init__(self)
+        super().__init__()
         self.value = value
         self.start = start
         self.stop = stop
@@ -179,7 +179,7 @@ class Cat(Value):
         Resulting `Value` obtained by concatentation.
     """
     def __init__(self, *args):
-        Value.__init__(self)
+        super().__init__()
         self.l = list(flat_iteration(args))
 
 
@@ -204,7 +204,7 @@ class Replicate(Value):
         Replicated value.
     """
     def __init__(self, v, n):
-        Value.__init__(self)
+        super().__init__()
         self.v = v
         self.n = n
 
@@ -253,10 +253,11 @@ class Signal(Value):
         defaults to 0) and `max` (exclusive, defaults to 2).
     related : Signal or None
     """
-    def __init__(self, bits_sign=None, name=None, variable=False, reset=0, name_override=None, min=None, max=None, related=None):
+    def __init__(self, bits_sign=None, name=None, variable=False, reset=0,
+                 name_override=None, min=None, max=None, related=None):
         from migen.fhdl.bitcontainer import bits_for
 
-        Value.__init__(self)
+        super().__init__()
 
         # determine number of bits and signedness
         if bits_sign is None:
@@ -313,7 +314,7 @@ class ClockSignal(Value):
         Clock domain to obtain a clock signal for. Defaults to `"sys"`.
     """
     def __init__(self, cd="sys"):
-        Value.__init__(self)
+        super().__init__()
         self.cd = cd
 
 
@@ -332,7 +333,7 @@ class ResetSignal(Value):
         error.
     """
     def __init__(self, cd="sys", allow_reset_less=False):
-        Value.__init__(self)
+        super().__init__()
         self.cd = cd
         self.allow_reset_less = allow_reset_less
 

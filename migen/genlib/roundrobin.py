@@ -1,6 +1,6 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 
-(SP_WITHDRAW, SP_CE) = range(2)
+SP_WITHDRAW, SP_CE = range(2)
 
 
 class RoundRobin(Module):
@@ -17,7 +17,7 @@ class RoundRobin(Module):
             cases = {}
             for i in range(n):
                 switch = []
-                for j in reversed(range(i+1, i+n)):
+                for j in reversed(range(i + 1, i + n)):
                     t = j % n
                     switch = [
                         If(self.request[t],

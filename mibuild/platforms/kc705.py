@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform, XC3SProg, VivadoProgrammer, iMPACT
 from mibuild.xilinx.ise import XilinxISEToolchain
 
@@ -422,8 +422,8 @@ class Platform(XilinxPlatform):
     default_clk_period = 6.4
 
     def __init__(self, toolchain="vivado", programmer="xc3sprog"):
-        XilinxPlatform.__init__(self, "xc7k325t-ffg900-2", _io, _connectors,
-            toolchain=toolchain)
+        super().__init__("xc7k325t-ffg900-2", _io, _connectors,
+                         toolchain=toolchain)
         if toolchain == "ise":
             self.toolchain.bitgen_opt = "-g LCK_cycle:6 -g Binary:Yes -w -g ConfigRate:12 -g SPI_buswidth:4"
         elif toolchain == "vivado":
@@ -442,7 +442,7 @@ class Platform(XilinxPlatform):
             raise ValueError("{} programmer is not supported".format(programmer))
 
     def do_finalize(self, fragment):
-        XilinxPlatform.do_finalize(self, fragment)
+        super().do_finalize(fragment)
         try:
             self.add_period_constraint(self.lookup_request("clk200").p, 5.0)
         except ConstraintError:

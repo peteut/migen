@@ -1,5 +1,5 @@
-from migen.fhdl.std import *
-from migen.genlib.io import *
+from migen.fhdl.std import *  # noqa
+from migen.genlib.io import *  # noqa
 
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
@@ -36,6 +36,6 @@ class LatticeDDROutput:
         return LatticeDDROutputImpl(dr.i1, dr.i2, dr.o, dr.clk)
 
 lattice_special_overrides = {
-    AsyncResetSynchronizer:    LatticeAsyncResetSynchronizer,
-    DDROutput:    LatticeDDROutput
+    AsyncResetSynchronizer: LatticeAsyncResetSynchronizer,
+    DDROutput: LatticeDDROutput
 }

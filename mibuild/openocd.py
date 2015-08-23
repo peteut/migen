@@ -7,7 +7,7 @@ class OpenOCD(GenericProgrammer):
     needs_bitreverse = False
 
     def __init__(self, config, flash_proxy_basename=None):
-        GenericProgrammer.__init__(self, flash_proxy_basename)
+        super().__init__(flash_proxy_basename)
         self.config = config
 
     def load_bitstream(self, bitstream):

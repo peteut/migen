@@ -1,8 +1,8 @@
 from collections import defaultdict
 
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.genlib.misc import optree
-from migen.flow.actor import *
+from migen.flow.actor import *  # noqa
 from migen.flow import plumbing
 
 # Abstract actors mean that the actor class should be instantiated with the parameters
@@ -95,7 +95,7 @@ class MultiDiGraph:
 # TODO: rewrite this without non-determinism
 class DataFlowGraph(MultiDiGraph):
     def __init__(self):
-        MultiDiGraph.__init__(self)
+        super().__init__()
         self.elaborated = False
         self.abstract_busy_signals = dict()
 

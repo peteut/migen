@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 
 
 class ReorderSlot:
@@ -28,7 +28,7 @@ class ReorderBuffer(Module):
 
         ###
 
-        empty_count = Signal(max=depth+1, reset=depth)
+        empty_count = Signal(max=depth + 1, reset=depth)
         produce = Signal(max=depth)
         consume = Signal(max=depth)
         slots = Array(ReorderSlot(tag_width, data_width)

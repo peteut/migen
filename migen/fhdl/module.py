@@ -2,7 +2,7 @@ import collections
 from itertools import combinations
 
 from migen.util.misc import flat_iteration
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Fragment
 from migen.fhdl.tools import rename_clock_domain
 from migen.sim.upper import gen_sim, proxy_sim
@@ -144,7 +144,8 @@ class Module:
             return self.get_fragment_called
 
         else:
-            raise AttributeError("'"+self.__class__.__name__+"' object has no attribute '"+name+"'")
+            raise AttributeError("'{}' object has no attribute '{}'".format(
+                self.__class__.__name__, name))
 
     def __setattr__(self, name, value):
         if name in ["comb", "sync", "specials", "submodules", "clock_domains"]:

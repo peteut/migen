@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 
 _ios = [
@@ -146,4 +146,4 @@ class Platform(XilinxPlatform):
     default_clk_period = 10
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc3s200a-ft256-4", _ios, _connectors)
+        super().__init__("xc3s200a-ft256-4", _ios, _connectors)

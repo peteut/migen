@@ -1,6 +1,6 @@
 import warnings
 
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 from migen.fhdl.module import Module
 from migen.fhdl.tools import insert_reset, rename_clock_domain
 
@@ -17,7 +17,7 @@ class ModuleTransformer:
     def wrap_class(self, victim):
         class Wrapped(victim):
             def __init__(i, *args, **kwargs):
-                victim.__init__(i, *args, **kwargs)
+                super().__init__(*args, **kwargs)
                 self.transform_instance(i)
 
             def get_fragment(i):
@@ -26,7 +26,6 @@ class ModuleTransformer:
                 return f
 
         Wrapped.__name__ = victim.__name__
-        # "{}_{}".format(self.__class__.__name__, victim.__name__)
         return Wrapped
 
     def wrap_instance(self, victim):

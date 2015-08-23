@@ -5,9 +5,9 @@ import os
 import subprocess
 import sys
 
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.structure import _Fragment
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 
 from mibuild import tools
 from mibuild.xilinx import common

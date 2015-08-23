@@ -1,12 +1,11 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.bitcontainer import value_bits_sign
 from migen.fhdl.specials import Special
-from migen.fhdl.tools import list_signals
 
 
 class NoRetiming(Special):
     def __init__(self, reg):
-        Special.__init__(self)
+        super().__init__()
         self.reg = reg
 
     # do nothing
@@ -37,7 +36,7 @@ class MultiRegImpl(Module):
 
 class MultiReg(Special):
     def __init__(self, i, o, odomain="sys", n=2):
-        Special.__init__(self)
+        super().__init__()
         self.i = i
         self.o = o
         self.odomain = odomain

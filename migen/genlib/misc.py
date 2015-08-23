@@ -1,4 +1,4 @@
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.structure import _Operator
 
 
@@ -16,7 +16,7 @@ def optree(op, operands, lb=None, ub=None, default=None):
     elif l == 1:
         return operands[lb]
     else:
-        s = lb + l//2
+        s = lb + l // 2
         return _Operator(op,
             [optree(op, operands, lb, s, default),
             optree(op, operands, s, ub, default)])
@@ -27,7 +27,7 @@ def split(v, *counts):
     offset = 0
     for n in counts:
         if n != 0:
-            r.append(v[offset:offset+n])
+            r.append(v[offset:offset + n])
         else:
             r.append(None)
         offset += n
@@ -38,7 +38,7 @@ def displacer(signal, shift, output, n=None, reverse=False):
     if shift is None:
         return output.eq(signal)
     if n is None:
-        n = 2**flen(shift)
+        n = 2 ** flen(shift)
     w = flen(signal)
     if reverse:
         r = reversed(range(n))
@@ -52,7 +52,7 @@ def chooser(signal, shift, output, n=None, reverse=False):
     if shift is None:
         return output.eq(signal)
     if n is None:
-        n = 2**flen(shift)
+        n = 2 ** flen(shift)
     w = flen(output)
     cases = {}
     for i in range(n):
@@ -60,21 +60,21 @@ def chooser(signal, shift, output, n=None, reverse=False):
             s = n - i - 1
         else:
             s = i
-        cases[i] = [output.eq(signal[s*w:(s+1)*w])]
+        cases[i] = [output.eq(signal[s * w:(s + 1) * w])]
     return Case(shift, cases).makedefault()
 
 
 def reverse_bytes(signal):
-    n = (flen(signal)+7)//8
+    n = (flen(signal) + 7) // 8
     r = []
     for i in reversed(range(n)):
-        r.append(signal[i*8:min((i+1)*8, flen(signal))])
+        r.append(signal[i * 8:min((i + 1) * 8, flen(signal))])
     return Cat(iter(r))
 
 
 def timeline(trigger, events):
     lastevent = max([e[0] for e in events])
-    counter = Signal(max=lastevent+1)
+    counter = Signal(max=lastevent + 1)
 
     counterlogic = If(counter != 0,
         counter.eq(counter + 1)
@@ -115,7 +115,7 @@ class Counter(Module):
     def __init__(self, *args, increment=1, **kwargs):
         self.value = Signal(*args, **kwargs)
         self.width = flen(self.value)
-        self.sync += self.value.eq(self.value+increment)
+        self.sync += self.value.eq(self.value + increment)
 
 
 class WaitTimer(Module):

@@ -2,10 +2,10 @@ import os
 import subprocess
 import sys
 
-from migen.fhdl.std import *
+from migen.fhdl.std import *  # noqa
 from migen.fhdl.structure import _Fragment
 
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild import tools
 from mibuild.xilinx import common
 
@@ -202,4 +202,4 @@ class XilinxISEToolchain:
 
     def add_period_constraint(self, platform, clk, period):
         platform.add_platform_command("""NET "{clk}" TNM_NET = "GRP{clk}";
-TIMESPEC "TS{clk}" = PERIOD "GRP{clk}" """+str(period)+""" ns HIGH 50%;""", clk=clk)
+TIMESPEC "TS{clk}" = PERIOD "GRP{clk}" """ + str(period) + """ ns HIGH 50%;""", clk=clk)

@@ -1,11 +1,11 @@
 from functools import partial
 from operator import itemgetter
 
-from migen.fhdl.structure import *
+from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Operator, _Slice, _Assign, _Fragment
-from migen.fhdl.tools import *
+from migen.fhdl.tools import *  # noqa
 from migen.fhdl.bitcontainer import bits_for, flen
-from migen.fhdl.namer import Namespace, build_namespace
+from migen.fhdl.namer import build_namespace
 from migen.fhdl.conv_output import ConvOutput
 
 _reserved_keywords = {
@@ -34,7 +34,7 @@ def _printsig(ns, s):
     else:
         n = ""
     if flen(s) > 1:
-        n += "[" + str(flen(s)-1) + ":0] "
+        n += "[{}:0] ".format(flen(s) - 1)
     n += ns.get_name(s)
     return n
 
@@ -48,9 +48,9 @@ def _printintbool(node):
     elif isinstance(node, int):
         nbits = bits_for(node)
         if node >= 0:
-            return str(nbits) + "'d" + str(node), False
+            return "{}'d{}".format(nbits, node), False
         else:
-            return str(nbits) + "'sd" + str(2**nbits + node), True
+            return "{}'sd{}".format(nbits, 2 ** nbits + node), True
     else:
         raise TypeError
 
@@ -68,7 +68,7 @@ def _printexpr(ns, node):
                 if s1:
                     r = node.op + r1
                 else:
-                    r = "-$signed({1'd0, " + r1 + "})"
+                    r = "-$signed({{1'd0, {}}})".format(r1)
                 s = True
             else:
                 r = node.op + r1
@@ -77,20 +77,20 @@ def _printexpr(ns, node):
             r2, s2 = _printexpr(ns, node.operands[1])
             if node.op not in ["<<<", ">>>"]:
                 if s2 and not s1:
-                    r1 = "$signed({1'd0, " + r1 + "})"
+                    r1 = "$signed({{1'd0, {}}})".format(r1)
                 if s1 and not s2:
-                    r2 = "$signed({1'd0, " + r2 + "})"
-            r = r1 + " " + node.op + " " + r2
+                    r2 = "$signed({{1'd0, {}}})".format(r2)
+            r = " ".join((r1,  node.op, r2))
             s = s1 or s2
         elif arity == 3:
             assert node.op == "m"
             r2, s2 = _printexpr(ns, node.operands[1])
             r3, s3 = _printexpr(ns, node.operands[2])
             if s2 and not s3:
-                r3 = "$signed({1'd0, " + r3 + "})"
+                r3 = "$signed({{1'd0, {}}})".format(r3)
             if s3 and not s2:
-                r2 = "$signed({1'd0, " + r2 + "})"
-            r = r1 + " ? " + r2 + " : " + r3
+                r2 = "$signed({{1'd0, {}}})".format(r2)
+            r = " ".join((r1, "?", r2,  ":", r3))
             s = s2 or s3
         else:
             raise TypeError
@@ -103,18 +103,18 @@ def _printexpr(ns, node):
               return _printexpr(ns, node.value)
 
         if node.start + 1 == node.stop:
-            sr = "[" + str(node.start) + "]"
+            sr = "[{}]".format(node.start)
         else:
-            sr = "[" + str(node.stop-1) + ":" + str(node.start) + "]"
+            sr = "[{}:{}]".format(node.stop - 1,  node.start)
         r, s = _printexpr(ns, node.value)
         return r + sr, s
     elif isinstance(node, Cat):
         l = [_printexpr(ns, v)[0] for v in reversed(node.l)]
-        return "{" + ", ".join(l) + "}", False
+        return "{{{}}}".format(", ".join(l)), False
     elif isinstance(node, Replicate):
-        return "{" + str(node.n) + "{" + _printexpr(ns, node.v)[0] + "}}", False
+        return "{{{}{{{}}}}}".format(node.n, _printexpr(ns, node.v)[0]), False
     else:
-        raise TypeError("Expression of unrecognized type: "+str(type(node)))
+        raise TypeError("Expression of unrecognized type: {}".format(type(node)))
 
 (_AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL) = range(3)
 
@@ -131,35 +131,36 @@ def _printnode(ns, at, level, node):
             assignment = " = "
         else:
             assignment = " <= "
-        return "\t"*level + _printexpr(ns, node.l)[0] + assignment + _printexpr(ns, node.r)[0] + ";\n"
+        return "".join(("\t" * level, _printexpr(ns, node.l)[0], assignment,
+                        _printexpr(ns, node.r)[0], ";\n"))
     elif isinstance(node, (list, tuple)):
         return "".join(list(map(partial(_printnode, ns, at, level), node)))
     elif isinstance(node, If):
-        r = "\t"*level + "if (" + _printexpr(ns, node.cond)[0] + ") begin\n"
+        r = "\t" * level + "if ({}) begin\n".format(_printexpr(ns, node.cond)[0])
         r += _printnode(ns, at, level + 1, node.t)
         if node.f:
-            r += "\t"*level + "end else begin\n"
+            r += "\t" * level + "end else begin\n"
             r += _printnode(ns, at, level + 1, node.f)
-        r += "\t"*level + "end\n"
+        r += "\t" * level + "end\n"
         return r
     elif isinstance(node, Case):
         if node.cases:
-            r = "\t"*level + "case (" + _printexpr(ns, node.test)[0] + ")\n"
+            r = "\t" * level + "case ({})\n".format(_printexpr(ns, node.test)[0])
             css = sorted([(k, v) for (k, v) in node.cases.items() if k != "default"], key=itemgetter(0))
             for choice, statements in css:
-                r += "\t"*(level + 1) + _printexpr(ns, choice)[0] + ": begin\n"
+                r += "\t" * (level + 1) + "{}: begin\n".format(_printexpr(ns, choice)[0])
                 r += _printnode(ns, at, level + 2, statements)
-                r += "\t"*(level + 1) + "end\n"
+                r += "\t" * (level + 1) + "end\n"
             if "default" in node.cases:
-                r += "\t"*(level + 1) + "default: begin\n"
+                r += "\t" * (level + 1) + "default: begin\n"
                 r += _printnode(ns, at, level + 2, node.cases["default"])
-                r += "\t"*(level + 1) + "end\n"
-            r += "\t"*level + "endcase\n"
+                r += "\t" * (level + 1) + "end\n"
+            r += "\t" * level + "endcase\n"
             return r
         else:
             return ""
     else:
-        raise TypeError("Node of unrecognized type: "+str(type(node)))
+        raise TypeError("Node of unrecognized type:{}".format(type(node)))
 
 
 def _list_comb_wires(f):
@@ -334,7 +335,7 @@ def convert(f, ios=None, name="top",
                 f.clock_domains.append(cd)
                 ios |= {cd.clk, cd.rst}
             else:
-                raise KeyError("Unresolved clock domain: '"+cd_name+"'")
+                raise KeyError("Unresolved clock domain: '{}'".format(cd_name))
 
     f = lower_complex_slices(f)
     insert_resets(f)
@@ -342,9 +343,9 @@ def convert(f, ios=None, name="top",
     fs, lowered_specials = _lower_specials(special_overrides, f.specials)
     f += lower_basics(fs)
 
-    ns = build_namespace(list_signals(f) \
-        | list_special_ios(f, True, True, True) \
-        | ios, _reserved_keywords)
+    ns = (build_namespace(list_signals(f)
+                          | list_special_ios(f, True, True, True)
+                          | ios, _reserved_keywords))
     r.ns = ns
 
     src = "/* Machine-generated using Migen */\n"

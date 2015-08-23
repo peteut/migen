@@ -34,7 +34,7 @@ def value_bits_sign(v):
         return 1, False
     elif isinstance(v, f._Operator):
         obs = list(map(value_bits_sign, v.operands))
-        if v.op == "+" or v.op == "-":
+        if v.op in ("+", "-"):
             if not obs[0][1] and not obs[1][1]:
                 # both operands unsigned
                 return max(obs[0][0], obs[1][0]) + 1, False
@@ -59,17 +59,17 @@ def value_bits_sign(v):
                 return obs[0][0] + obs[1][0] + 1 - 1
         elif v.op == "<<<":
             if obs[1][1]:
-                extra = 2**(obs[1][0] - 1) - 1
+                extra = 2 ** (obs[1][0] - 1) - 1
             else:
-                extra = 2**obs[1][0] - 1
+                extra = 2 ** obs[1][0] - 1
             return obs[0][0] + extra, obs[0][1]
         elif v.op == ">>>":
             if obs[1][1]:
-                extra = 2**(obs[1][0] - 1)
+                extra = 2 ** (obs[1][0] - 1)
             else:
                 extra = 0
             return obs[0][0] + extra, obs[0][1]
-        elif v.op == "&" or v.op == "^" or v.op == "|":
+        elif v.op in ("&", "^", "|"):
             if not obs[0][1] and not obs[1][1]:
                 # both operands unsigned
                 return max(obs[0][0], obs[1][0]), False
@@ -82,8 +82,7 @@ def value_bits_sign(v):
             else:
                 # first signed, second operand unsigned (add sign bit)
                 return max(obs[0][0], obs[1][0] + 1), True
-        elif v.op == "<" or v.op == "<=" or v.op == "==" or v.op == "!=" \
-          or v.op == ">" or v.op == ">=":
+        elif v.op in ("<", "<=", "==", "!=",  ">", ">="):
               return 1, False
         elif v.op == "~":
             return obs[0]
@@ -94,7 +93,7 @@ def value_bits_sign(v):
     elif isinstance(v, f.Cat):
         return sum(value_bits_sign(sv)[0] for sv in v.l), False
     elif isinstance(v, f.Replicate):
-        return (value_bits_sign(v.v)[0])*v.n, False
+        return (value_bits_sign(v.v)[0]) * v.n, False
     elif isinstance(v, f._ArrayProxy):
         bsc = list(map(value_bits_sign, v.choices))
         return max(bs[0] for bs in bsc), any(bs[1] for bs in bsc)

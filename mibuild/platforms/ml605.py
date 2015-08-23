@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 
 _io = [
@@ -56,4 +56,4 @@ class Platform(XilinxPlatform):
     default_clk_period = 5
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc6vlx240t-ff1156-1", _io)
+        super().__init__("xc6vlx240t-ff1156-1", _io)

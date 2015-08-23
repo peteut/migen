@@ -1,4 +1,4 @@
-from mibuild.generic_platform import *
+from mibuild.generic_platform import *  # noqa
 from mibuild.xilinx import XilinxPlatform
 from mibuild.xilinx.programmer import UrJTAG
 
@@ -160,7 +160,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 20
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xc6slx45-fgg484-2", _io)
+        super().__init__("xc6slx45-fgg484-2", _io)
         self.add_platform_command("CONFIG VCCAUX=\"3.3\";\n")
 
     def create_programmer(self):
