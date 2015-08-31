@@ -34,7 +34,10 @@ class Runner:
         subprocess.check_call(["iverilog", "-o", self.vvp_file] + self.options
                               + [self.top_file, self.dut_file]
                               + self.extra_files)
-        self.process = subprocess.Popen(["vvp", "-mmigensim", "-Mvpi",
+        self.process = subprocess.Popen(
+            ["vvp", "-M", os.path.realpath(os.path.join(
+                os.path.dirname(__file__), "..", "..", "vpi")),
+                                         "-mmigensim", "-Mvpi",
                                          self.vvp_file])
 
     def close(self):
