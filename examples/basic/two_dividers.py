@@ -1,4 +1,4 @@
-from migen.fhdl.std import Module, ResetInserter, CEInserter
+from migen import *  # noqa
 from migen.fhdl import verilog
 from migen.genlib import divider
 
@@ -16,7 +16,7 @@ class Example(Module):
             d2.ready_o, d2.quotient_o, d2.remainder_o, d2.start_i,
             d2.dividend_i, d2.divisor_i}
 
-example = Example(16)
 
 if __name__ == "__main__":
+    example = Example(16)
     print(verilog.convert(example, example.ios | {example.ce, example.reset}))

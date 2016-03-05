@@ -1,4 +1,4 @@
-from migen.fhdl.std import Module, Memory
+from migen import *  # noqa
 from migen.fhdl import verilog
 
 
@@ -11,7 +11,7 @@ class Example(Module):
         self.ios = {p1.adr, p1.dat_r, p1.we, p1.dat_w,
                     p2.adr, p2.dat_r, p2.re}
 
-example = Example()
 
 if __name__ == "__main__":
+    example = Example()
     print(verilog.convert(example, example.ios))

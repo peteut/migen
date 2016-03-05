@@ -1,6 +1,6 @@
 language: python
 python:
-  - 3.3
+  - 3.4
 
 env:
   - TOXENV=py33
@@ -23,6 +23,7 @@ before_install:
 install:
   - sudo apt-get install iverilog-daily
   - sudo apt-get install verilator
+  - pip install -U pip
   - pip install tox
   - pip install coveralls
 

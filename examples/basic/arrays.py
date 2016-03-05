@@ -1,4 +1,4 @@
-from migen.fhdl.std import Module, Signal, Array, If, Instance
+from migen import *  # noqa
 from migen.fhdl import verilog
 
 

@@ -1,4 +1,6 @@
-from migen.fhdl.std import *  # noqa
+from migen.fhdl.structure import *  # noqa
+from migen.fhdl.module import Module
+
 
 SP_WITHDRAW, SP_CE = range(2)
 

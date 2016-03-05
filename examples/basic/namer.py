@@ -1,6 +1,8 @@
-from migen.fhdl.std import Module, Signal
+from migen import *  # noqa
 from migen.fhdl import verilog
-from migen.genlib.misc import optree
+
+from functools import reduce
+from operator import or_
 
 
 def gen_list(n):
@@ -37,7 +39,7 @@ class Example(Module):
         for lst in [a, b, c]:
             for obj in lst:
                 allsigs.extend(obj.sigs)
-        self.comb += output.eq(optree("|", allsigs))
+        self.comb += output.eq(reduce(or_, allsigs))
 
 if __name__ == "__main__":
     print(verilog.convert(Example()))

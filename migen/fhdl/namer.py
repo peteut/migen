@@ -158,16 +158,16 @@ def _build_pnd_for_group(group_n, signals):
         if _debug:
             print("namer: using basic strategy (group {0})".format(group_n))
 
-    # ...then add number suffixes by HUID
+    # ...then add number suffixes by DUID
     inv_pnd = _invert_pnd(pnd)
-    huid_suffixed = False
+    duid_suffixed = False
     for name, signals in inv_pnd.items():
         if len(signals) > 1:
-            huid_suffixed = True
-            for n, signal in enumerate(sorted(signals, key=lambda x: x.huid)):
+            duid_suffixed = True
+            for n, signal in enumerate(sorted(signals, key=lambda x: x.duid)):
                 pnd[signal] += str(n)
-    if _debug and huid_suffixed:
-        print("namer: using HUID suffixes (group {0})".format(group_n))
+    if _debug and duid_suffixed:
+        print("namer: using DUID suffixes (group {0})".format(group_n))
 
     return pnd
 
@@ -182,9 +182,10 @@ def _build_signal_groups(signals):
             related_list.insert(0, cur_signal)
             cur_signal = cur_signal.related
         # add to groups
-        r += [set()] * (len(related_list) - len(r))
-        for target_set, source_set in zip(r, related_list):
-            target_set.add(source_set)
+        for _ in range(len(related_list) - len(r)):
+            r.append(set())
+        for target_set, source_signal in zip(r, related_list):
+            target_set.add(source_signal)
     # with the algorithm above and a list of all signals,
     # a signal appears in all groups of a lower number than its.
     # make signals appear only in their group of highest number.
@@ -227,8 +228,17 @@ class Namespace:
         self.counts = {k: 1 for k in reserved_keywords}
         self.sigs = {}
         self.pnd = pnd
+        self.clock_domains = dict()
 
     def get_name(self, sig):
+        if isinstance(sig, ClockSignal):
+            sig = self.clock_domains[sig.cd].clk
+        if isinstance(sig, ResetSignal):
+            sig = self.clock_domains[sig.cd].rst
+            if sig is None:
+                raise ValueError("Attempted to obtain name of non-existent "
+                                 "reset signal of domain {}".format(sig.cd))
+
         if sig.name_override is not None:
             sig_name = sig.name_override
         else:

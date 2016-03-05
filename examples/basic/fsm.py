@@ -1,12 +1,11 @@
-from migen.fhdl.std import Module, Signal
+from migen import *  # noqa
 from migen.fhdl import verilog
-from migen.genlib.fsm import FSM, NextState, NextValue
-
 
 class Example(Module):
     def __init__(self):
         self.s = Signal()
         self.counter = Signal(8)
+        x = Array(Signal(name="a") for i in range(7))
 
         myfsm = FSM()
         self.submodules += myfsm
@@ -18,6 +17,7 @@ class Example(Module):
         myfsm.act("BAR",
                   self.s.eq(0),
                   NextValue(self.counter, self.counter + 1),
+                  NextValue(x[self.counter], 89),
                   NextState("FOO")
                   )
 
@@ -26,9 +26,6 @@ class Example(Module):
         self.bl = myfsm.before_leaving("FOO")
         self.al = myfsm.after_leaving("FOO")
 
-example = Example()
-
 if __name__ == "__main__":
-    print(verilog.convert(example,
-                          {example.s, example.counter, example.be, example.ae,
-                           example.bl, example.al}))
+    example = Example()
+    print(verilog.convert(example, {example.s, example.counter, example.be, example.ae, example.bl, example.al}))

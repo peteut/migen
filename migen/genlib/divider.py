@@ -1,4 +1,5 @@
-from migen.fhdl.std import *  # noqa
+from migen.fhdl.structure import *  # noqa
+from migen.fhdl.module import Module
 
 
 class Divider(Module):

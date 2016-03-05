@@ -1,7 +1,5 @@
-from migen.fhdl.std import Module
+from migen import *  # noqa
 from migen.fhdl import verilog
-from migen.genlib.record import Record, DIR_M_TO_S, DIR_S_TO_M, \
-    layout_len, layout_partial
 
 
 L = [
@@ -20,6 +18,7 @@ class Test(Module):
         master = Record(L)
         slave = Record(L)
         self.comb += master.connect(slave)
+
 
 if __name__ == "__main__":
     print(verilog.convert(Test()))

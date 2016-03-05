@@ -1,7 +1,6 @@
 import subprocess
 
-from migen.fhdl.std import *
-from migen.fhdl.specials import Instance
+from migen import *  # noqa
 from migen.fhdl.verilog import convert
 
 
@@ -11,9 +10,9 @@ from migen.fhdl.verilog import convert
 # second.
 class ParentModule(Module):
     def __init__(self):
-        self.inputs = [Signal(x+1, name="input{}".format(x)) for x in range(4)]
-        self.trans = [Signal(x+1) for x in range(4)]
-        self.outputs = [Signal(x+1, name="output{}".format(x)) for x in range(4)]
+        self.inputs = [Signal(x + 1, name="input{}".format(x)) for x in range(4)]
+        self.trans = [Signal(x + 1) for x in range(4)]
+        self.outputs = [Signal(x + 1, name="output{}".format(x)) for x in range(4)]
         self.io = set(self.inputs) | set(self.outputs)
         i = Instance("ChildModule",
                      i_master_clk=ClockSignal(),
@@ -44,8 +43,8 @@ class ParentModule(Module):
 
 class ChildModule(Module):
     def __init__(self):
-        self.inputs = [Signal(x+1, name_override="input{}".format(x)) for x in range(4)]
-        self.outputs = [Signal(x+1, name_override="output{}".format(x)) for x in range(4)]
+        self.inputs = [Signal(x + 1, name_override="input{}".format(x)) for x in range(4)]
+        self.outputs = [Signal(x + 1, name_override="output{}".format(x)) for x in range(4)]
         self.io = set()
         for x in range(4):
             self.sync.master += self.outputs[x].eq(self.inputs[x])

@@ -1,4 +1,4 @@
-from migen.fhdl.std import Module, ClockDomain
+from migen import *  # noqa
 from migen.fhdl import verilog
 from migen.genlib.divider import Divider
 
@@ -14,7 +14,6 @@ class MultiMod(Module):
         self.submodules.foo = CDM()
         self.submodules.bar = CDM()
 
-mm = MultiMod()
-
 if __name__ == "__main__":
+    mm = MultiMod()
     print(verilog.convert(mm, {mm.foo.cd_sys.clk, mm.bar.cd_sys.clk}))

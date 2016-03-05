@@ -1,4 +1,4 @@
-from migen.fhdl.std import Module, Signal, Cat
+from migen import *  # noqa
 from migen.fhdl import verilog
 
 
@@ -13,6 +13,7 @@ class Example(Module):
         s3 = Cat(s1, s2)[-5:]
         self.comb += s3.eq(0)
         self.comb += d.eq(Cat(d[::-1], Cat(s1[:1], s3[-4:])[:3]))
+
 
 if __name__ == "__main__":
     print(verilog.convert(Example()))

@@ -1,8 +1,9 @@
-from migen.fhdl.std import *  # noqa
-
 """
 Encoders and decoders between binary and one-hot representation
 """
+
+from migen.fhdl.structure import *  # noqa
+from migen.fhdl.module import Module
 
 
 class Encoder(Module):

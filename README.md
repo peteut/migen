@@ -44,20 +44,20 @@ System-on-chip design based on Migen:
 https://github.com/m-labs/misoc
 
 Online documentation:
-http://m-labs.hk/gateware.html
+https://m-labs.hk/gateware.html
 
 #### Quick intro
 
 ```python
-from migen.fhdl.std import *
-from mibuild.platforms import m1
+from migen import *
+from migen.build.platforms import m1
 plat = m1.Platform()
 led = plat.request("user_led")
 m = Module()
 counter = Signal(26)
 m.comb += led.eq(counter[25])
 m.sync += counter.eq(counter + 1)
-plat.build_cmdline(m)
+plat.build(m)
 ```
 
 #### License
