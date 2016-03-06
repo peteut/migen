@@ -1,19 +1,14 @@
 import builtins as _builtins
 import collections as _collections
+import itertools
 
 from migen.fhdl import tracer as _tracer
 from migen.util.misc import flat_iteration as _flat_iteration
 
-
-class DUID:
-    """Deterministic Unique IDentifier"""
-    __next_uid = 0
-    def __init__(self):
-        self.duid = DUID.__next_uid
-        DUID.__next_uid += 1
+duid = itertools.count(0)
 
 
-class _Value(DUID):
+class _Value:
     """Base class for operands
 
     Instances of `_Value` or its subclasses can be operands to
@@ -316,6 +311,7 @@ class Signal(_Value):
         from migen.fhdl.bitcontainer import bits_for
 
         super().__init__()
+        self._duid = next(duid)
 
         # determine number of bits and signedness
         if bits_sign is None:
@@ -365,7 +361,7 @@ class Signal(_Value):
         return cls(bits_sign=value_bits_sign(other), **kwargs)
 
     def __hash__(self):
-        return self.duid
+        return self._duid
 
 
 class ClockSignal(_Value):
@@ -674,10 +670,10 @@ class _ClockDomainList(list):
                     return cd
             raise KeyError(key)
         else:
-            return list.__getitem__(self, key)
+            return super().__getitem__(key)
 
 
-(SPECIAL_INPUT, SPECIAL_OUTPUT, SPECIAL_INOUT) = range(3)
+SPECIAL_INPUT, SPECIAL_OUTPUT, SPECIAL_INOUT = range(3)
 
 
 class _Fragment:

@@ -164,7 +164,7 @@ def _build_pnd_for_group(group_n, signals):
     for name, signals in inv_pnd.items():
         if len(signals) > 1:
             duid_suffixed = True
-            for n, signal in enumerate(sorted(signals, key=lambda x: x.duid)):
+            for n, signal in enumerate(sorted(signals, key=hash)):
                 pnd[signal] += str(n)
     if _debug and duid_suffixed:
         print("namer: using DUID suffixes (group {0})".format(group_n))

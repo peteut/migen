@@ -12,7 +12,10 @@ __all__ = ["TSTriple", "Instance", "Memory",
     "READ_FIRST", "WRITE_FIRST", "NO_CHANGE"]
 
 
-class Special(DUID):
+class Special:
+    def __init__(self):
+        self._duid = next(duid)
+
     def iter_expressions(self):
         for x in []:
             yield x
@@ -36,6 +39,9 @@ class Special(DUID):
                 signals = list_signals(getattr(obj, attr))
                 r.update(signals)
         return r
+
+    def __hash__(self):
+        return self._duid
 
 
 class Tristate(Special):

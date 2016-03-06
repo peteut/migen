@@ -272,7 +272,7 @@ class Simulator:
                     signals.add(cd.rst)
             for memory_array in mta.replacements.values():
                 signals |= set(memory_array)
-            for signal in sorted(signals, key=lambda x: x.duid):
+            for signal in sorted(signals, key=hash):
                 self.vcd.set(signal, signal.reset.value)
 
     def __enter__(self):

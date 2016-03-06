@@ -143,7 +143,7 @@ def is_variable(node):
 
 def generate_reset(rst, sl):
     targets = list_targets(sl)
-    return [t.eq(t.reset) for t in sorted(targets, key=lambda x: x.duid)]
+    return [t.eq(t.reset) for t in sorted(targets, key=hash)]
 
 
 def insert_reset(rst, sl):
@@ -311,7 +311,7 @@ def call_special_classmethod(overrides, obj, method, *args, **kwargs):
 def _lower_specials_step(overrides, specials):
     f = _Fragment()
     lowered_specials = set()
-    for special in sorted(specials, key=lambda x: x.duid):
+    for special in sorted(specials, key=hash):
         impl = call_special_classmethod(overrides, special, "lower")
         if impl is not None:
             f += impl.get_fragment()

@@ -177,7 +177,7 @@ def _printheader(f, ios, name, ns,
     wires = _list_comb_wires(f) | special_outs
     r = "module " + name + "(\n"
     firstp = True
-    for sig in sorted(ios, key=lambda x: x.duid):
+    for sig in sorted(ios, key=hash):
         if not firstp:
             r += ",\n"
         firstp = False
@@ -191,7 +191,7 @@ def _printheader(f, ios, name, ns,
         else:
             r += "\tinput " + _printsig(ns, sig)
     r += "\n);\n\n"
-    for sig in sorted(sigs - ios, key=lambda x: x.duid):
+    for sig in sorted(sigs - ios, key=hash):
         if sig in wires:
             r += "wire " + _printsig(ns, sig) + ";\n"
         else:
@@ -263,7 +263,7 @@ def _printsync(f, ns):
 
 def _printspecials(overrides, specials, ns, add_data_file):
     r = ""
-    for special in sorted(specials, key=lambda x: x.duid):
+    for special in sorted(specials, key=hash):
         pr = call_special_classmethod(overrides, special, "emit_verilog", ns, add_data_file)
         if pr is None:
             raise NotImplementedError("Special " + str(special) + " failed to implement emit_verilog")
