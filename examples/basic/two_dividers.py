@@ -1,5 +1,6 @@
 from migen import *  # noqa
-from migen.fhdl import verilog
+from migen.fhdl.vhdl import convert
+# from migen.fhdl.verilog import convert
 from migen.genlib import divider
 
 
@@ -19,4 +20,4 @@ class Example(Module):
 
 if __name__ == "__main__":
     example = Example(16)
-    print(verilog.convert(example, example.ios | {example.ce, example.reset}))
+    print(convert(example, example.ios | {example.ce, example.reset}))

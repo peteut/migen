@@ -1,1 +1,3 @@
 toolz>=0.7.4
+multimethods.py>=0.5.3
+Mako>=1.0.3

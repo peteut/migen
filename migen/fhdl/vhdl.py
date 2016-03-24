@@ -1,0 +1,552 @@
+from collections import Iterable
+try:
+    from functools import singledispatch
+except ImportError:
+    from multimethods import singledispatch
+from enum import Enum
+
+from migen.fhdl.structure import *  # noqa
+
+from migen.fhdl.structure import *  # noqa
+from migen.fhdl.structure import _Operator,_Slice, _Assign, _Fragment
+from migen.fhdl.tools import *  # noqa
+from migen.fhdl.namer import build_namespace
+from migen.fhdl.conv_output import ConvOutput
+
+from mako.template import Template
+
+from toolz.curried import *  # noqa
+from toolz.compatibility import iteritems
+from operator import (is_, and_, or_, and_, attrgetter, sub,
+                      mul, contains)
+
+is_, and_, mul, sub, contains = map(curry, [is_, and_, mul, sub, contains])
+
+
+__all__ = ["convert"]
+
+# VHDL-2008 reserved words
+_reserved_keywords = {
+    "abs", "access", "after", "alias", "all", "and", "architecture", "array",
+    "assert", "assume", "assume_guarantee", "attribute", "begin", "block",
+    "body", "buffer", "bus", "case", "component", "configuration", "constant",
+    "context", "cover", "default", "disconnect", "downto", "else", "elsif",
+    "end", "entity", "exit", "fairness", "file", "for", "force", "function",
+    "generate", "generic", "group", "guarded", "if", "impure", "in", "inertial",
+    "inout", "is", "label", "library", "linkage", "literal", "loop", "map",
+    "mod", "nand", "new", "next", "nor", "not", "null", "of", "on", "open",
+    "or", "others", "out", "package", "parameter", "port", "postponed",
+    "procedure", "process", "property", "protected", "pure", "range", "record",
+    "register", "reject", "release", "rem", "report", "restruct",
+    "restrict_guarantee", "return", "rol", "ror", "select", "sequence",
+    "severity", "shared", "signal", "sla", "sll", "sra", "srl", "strong",
+    "subtype", "then", "to", "transport", "type", "unaffected", "units",
+    "until", "use", "variable", "vmode", "vprop", "vunit", "wait", "when",
+    "while", "whith", "xnor", "xor"}
+
+
+def _get_sigtype(s):
+    return ("std_ulogic" if len(s) is 1
+            else "std_logic_vector({} downto 0)".format(len(s) - 1))
+
+_entitytemplate = Template(
+"""\
+<%!
+from migen.fhdl.vhdl import _get_sigtype
+%><%
+def _direction(sig):
+    return "inout" if sig in inouts else "out" if sig in targets  else "in"
+%>\
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library ieee_proposed;
+use ieee_proposed.numeric_std_additions.all;
+use ieee_proposed.std_logic_1164_additions.all;
+
+
+entity ${name} is
+% for sig in ios:
+${"port (" if bool(loop.first) else " " * 6}\
+${ns.get_name(sig)}: \
+${_direction(sig)} ${_get_sigtype(sig)}${")" * bool(loop.last)};
+% endfor
+end entity ${name};
+""")
+
+@curry
+def apply(fn, args):
+    return fn(*args)
+
+
+_sigs = comp(reduce(or_),
+             juxt([list_signals,
+                   comp(apply(list_special_ios),
+                        flip(cons, [True, True, True]))]))
+_inouts = comp(apply(list_special_ios), flip(cons, [False, False, True]))
+_targets = comp(reduce(or_),
+                juxt([list_targets,
+                      comp(apply(list_special_ios),
+                           flip(cons, [False, True, True]))]))
+
+
+def _printentity(f, ios, name, ns):
+    return _entitytemplate.render(
+        name=name, sigs=_sigs(f), inouts=_inouts(f),
+        targets=_targets(f), ns=ns, ios=sorted(ios, key=hash))
+
+_get_comb, _get_sync, _get_clock_domains = map(
+    attrgetter, ["comb", "sync", "clock_domains"])
+_reg_typename = "{}_reg_t".format
+_rin_name = "{}_rin".format
+_r_name = "{}_r".format
+_v_name = "{}_v".format
+_sorted_sync = comp(concatv, partial(sorted, key=get(0)), iteritems, _get_sync)
+_cd_regs = comp(
+    map(juxt(
+    [first,
+     comp(filter(complement(is_variable)),
+          filter(comp(flip(isinstance, Signal))), list_targets, second)])),
+    _sorted_sync)
+_assignments = comp(pluck(0), pluck(1),
+                    filter(comp(reduce(and_),
+                                juxt([comp(is_(1), len, get(1)),
+                                      comp(flip(isinstance, _Assign),
+                                           get_in([1, 0]))]))),
+                    concatv, group_by_targets, _get_comb)
+_comb_sigs = comp(
+    reduce(sub),
+    juxt([comp(set, map(attrgetter("l")),  _assignments),
+          comp(set, pluck(1), _cd_regs)]))
+_sorted_comb = comp(concatv, partial(sorted, key=get(0)), iteritems, _get_comb)
+
+
+def _sensitivity_list(f, ns, ios):
+    return pipe(
+        (ios | _inouts(f)) -
+        (_targets(f) |
+         pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
+        map(ns.get_name),
+        flip(concatv, pipe(f, _get_clock_domains, map(attrgetter("name")),
+                           map(_r_name))))
+
+_indent = mul("    ")
+_AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL = range(3)
+_THint = Enum("THint", "boolean logic un_signed  integer")
+
+
+@singledispatch
+def _printexpr(node, f, ns, at, lhs, buffer_variables, thint, lhint):
+    raise NotImplementedError("{} not implemented".format(type(node)))
+
+
+_func_call_template = Template( """\
+<%! from collections import Iterable
+
+def _iterable(arg):
+    return isinstance(arg, Iterable) and not isinstance(arg, str)
+%>\
+${name | trim}(${", ".join(map(str, args)) if _iterable(args) else args})""")
+
+_cast_unsigned = comp(lambda kws: _func_call_template.render(**kws),
+                      assoc({"name": "unsigned"}, "args"))
+_cast_signed = comp(lambda kws: _func_call_template.render(**kws),
+                    assoc({"name": "signed"}, "args"))
+
+
+@_printexpr.register(Constant)
+def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
+    if thint == _THint.integer:
+        return "({})".format(node.value) if node.value < 0 \
+            else "{}".format(node.value)
+    elif thint == _THint.logic:
+        if len(node) == 1 and not lhint:
+            return "'{}'".format(node.value)
+        elif node.value == 0:
+            return "(others => '0')"
+        elif node.value == 2 ** len(node) - 1:
+            return "(others => '1')"
+        else:
+            return _func_call_template.render(
+                name="std_logic_vector",
+                args=[_func_call_template.render(
+                    name="to_signed" if node.signed else "to_unsigned",
+                    args=[node.value, lhint or len(node)])])
+    else:
+        return _func_call_template.render(
+            name="to_signed" if node.signed else "to_unsigned",
+            args=[node.value, lhint or len(node)])
+
+
+@_printexpr.register(Signal)
+def _printexpr_signal(node, f, ns, at, lhs, buffer_variables, thint, lhint):
+    cd = pipe(f,
+              _cd_regs,
+              map(juxt(
+                  [first,
+                   comp(flip(contains, node), second)])),
+              filter(second),
+              map(first),
+              list) if f else []
+
+    if node in buffer_variables:
+        identifier = pipe(node, ns.get_name, _v_name)
+    else:
+        identifier = ns.get_name(node) if len(cd) == 0 else \
+            ".".join([_v_name(cd[0]) if lhs else _r_name(cd[0]), ns.get_name(node)])
+    casted = _cast_signed([identifier]) if node.signed else \
+        _cast_unsigned([identifier])
+    if thint == _THint.boolean:
+        assert len(node) == 1
+        return _func_call_template.render(name="\\??\\", args=[ns.get_name(node)])
+    if thint == _THint.un_signed:
+        return casted
+    elif thint == _THint.integer:
+        return _func_call_template.render(name="to_integer", args=[casted])
+    elif thint == _THint.logic and lhint:
+        return _func_call_template.render(
+            name="std_logic_vector",
+            args=[_func_call_template.render(
+                name="to_unsigned",
+                args=[_func_call_template.render(
+                    name="to_integer", args=[_cast_unsigned([identifier])]), lhint])])
+    else:
+        return identifier
+
+
+@_printexpr.register(_Slice)
+def _printexpr_slice(node, f, ns, at, lhs, buffer_variables, thint, lhint):
+    if node.start + 1 == node.stop:
+        sr = "" if len(node.value) == 1 else "({})".format(node.start)
+    else:
+        sr = "({} downto {})".format(node.stop - 1, node.start)
+    expr = "".join([_printexpr(node.value, f, ns, at, lhs, buffer_variables,
+                               _THint.logic, None), sr])
+    if thint == _THint.un_signed:
+        return _cast_unsigned([expr])
+    elif thint == _THint.integer:
+        return _func_call_template.render(
+            name="to_integer", args=[_cast_unsigned([expr])])
+    elif thint == _THint.boolean:
+        return _func_call_template.render(
+            name="\\??\\", args=[expr])
+    else:
+        return expr
+
+
+@_printexpr.register(Cat)
+def _printexpr_cat(node, f, ns, at, lhs, buffer_variables, thint, lhint):
+    expr = pipe(node.l, map(
+        comp(partial(_printexpr, f=f, ns=ns, at=at, lhs=lhs,
+                     buffer_variables=buffer_variables,
+                     thint=_THint.logic, lhint=None))),
+        tuple, reversed, " & ".join, "({})".format)
+    if thint == _THint.un_signed:
+        return _cast_unsigned([expr])
+    elif thint == _THint.integer:
+        return _func_call_template.render(
+            name="to_integer", args=[_cast_unsigned([expr])])
+    else:
+        return expr
+
+
+def _is_op_cmp(node):
+    return node.op == "==" if isinstance(node, _Operator) else False
+
+
+_bitwise_op_map = {"~": "not", "&": "and", "|": "or", "^": "xor"}
+_arith_op_map = {"+": "+", "-": "-", "*": "*", "/": "/", "%": "rem"}
+_is_arith_op = comp(contains(_arith_op_map.keys()), attrgetter("op"))
+_comp_map = {"==": "=", "!=": "/=", "<": "<", "<=": "<=", ">": ">", ">=": ">="}
+_is_bitwise_op = comp(contains(_bitwise_op_map.keys()), attrgetter("op"))
+_is_comp_op = comp(contains(_comp_map.keys()), attrgetter("op"))
+_get_op = comp(flip(get, merge(_bitwise_op_map, _arith_op_map, _comp_map)),
+               attrgetter("op"))
+_shift_op = {"<<<": "shift_left", ">>>": "shift_right"}
+_is_shift_op = comp(contains(_shift_op.keys()), attrgetter("op"))
+
+
+@_printexpr.register(_Operator)
+def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
+    arity = len(node.operands)
+    if arity == 1:
+        r1 = _printexpr(node.operands[0], f, ns, at, False,
+                        buffer_variables, _THint.logic, None)
+        if node.op == "-":
+            expr = "(-{})".format(_cast_signed([r1]))
+            if thint == _THint.un_signed:
+                return expr
+            elif thint == _THint.integer:
+                return _func_call_template.render(name="to_integer", args=[expr])
+            elif thint == _THint.logic:
+                return _func_call_template.render(name="std_logic_vector", args=[expr])
+            else:
+                return expr
+        else:
+            expr = "{} {}".format(_get_op(node), r1)
+            if thint == _THint.un_signed:
+                return _cast_unsigned([expr])
+            elif thint == _THint.integer:
+                return _func_call_template.render(name="to_integer",
+                                                  args=[_cast_unsigned([expr])])
+            elif _THint.boolean:
+                return _func_call_template.render(
+                    name="\\??\\", args=[expr])
+            else:
+                return "({})".format(expr)
+    elif arity == 2:
+        if _is_bitwise_op(node):
+            r1, r2 = map(partial(_printexpr, f=f, ns=ns, at=at, lhs=False,
+                                 buffer_variables=buffer_variables,
+                                 thint=_THint.logic, lhint=None), node.operands)
+            expr = " ".join([r1, _get_op(node), r2])
+            if thint == _THint.un_signed:
+                return _cast_unsigned([expr])
+            elif thint == _THint.integer:
+                return _func_call_template.render(name="to_integer", args=[expr])
+            else:
+                return expr
+        elif _is_comp_op(node):
+            r1, r2 = map(lambda x:
+                         _printexpr(x, f, ns, at, False,
+                                    buffer_variables,
+                                    _THint.integer if isinstance(x, Constant)
+                                    else _THint.un_signed, None),
+                         node.operands)
+            if thint == _THint.logic:
+                return _func_call_template.render(
+                    name=pipe(node, _get_op, "\\?{}\\".format),
+                    args=[r1, r2])
+            else:
+                return " ".join([r1, _get_op(node), r2])
+        elif _is_shift_op(node):
+            r1, r2 = map(lambda x:
+                         _printexpr(x, f, ns, at, False,
+                                    buffer_variables,
+                                    _THint.integer if isinstance(x, Constant)
+                                    else _THint.un_signed, None),
+                         node.operands)
+            expr = _func_call_template.render(
+                name=_shift_op[node.op],
+                args=[r1, r2])
+            if thint == _THint.integer:
+                return _func_call_template.render(name="to_integer", args=[expr])
+            elif thint == _THint.logic:
+                return _func_call_template.render(
+                    name="std_logic_vector", args=[expr])
+            else:
+                return expr
+        elif _is_arith_op(node):
+            r1, r2 = map(lambda x:
+                         _printexpr(x, f, ns, at, False,
+                                    buffer_variables,
+                                    _THint.integer if isinstance(x, Constant)
+                                    else _THint.un_signed, None),
+                         node.operands)
+            expr = " ".join([r1, _arith_op_map[node.op], r2])
+            if thint == _THint.integer:
+                return _func_call_template.render(name="to_integer", args=[expr])
+            elif thint == _THint.logic:
+                return _func_call_template.render(
+                    name="std_logic_vector", args=[expr])
+            else:
+                return expr
+
+    raise TypeError("unkown operator: {}, arity: {}".format(node, arity))
+
+
+@singledispatch
+def _printnode(node, f, ns, at, level, buffer_variables, thint, lhint):
+    raise NotImplementedError("{} not implemented".format(type(node)))
+
+
+@_printnode.register(Iterable)
+def _printnode_iterable(node, f, ns, at, level, buffer_variables, thint, lhint):
+    return pipe(node,
+                map(partial(_printnode, f=f, ns=ns, at=at, level=level,
+                            buffer_variables=buffer_variables,
+                            thint=None, lhint=None)),
+                ";\n".join)
+
+_iftemplate = Template(
+"""\
+<%!
+from migen.fhdl.vhdl import _indent, _printnode,  _printexpr, _THint
+%>\
+${_indent(level)}if ${_printexpr(node.cond, f, ns, at, False,
+    buffer_variables, _THint.boolean, None)} then
+${_printnode(node.t, f, ns, at, level + 1, buffer_variables, None, None)};
+% if node.f:
+${_indent(level)}else
+${_printnode(node.f, f, ns, at, level + 1, buffer_variables, None, None)};
+% endif
+${_indent(level)}end if\
+""")
+
+
+@_printnode.register(If)
+def _printnode_if(node, f, ns, at, level, buffer_variables, thint, lhint):
+    return _iftemplate.render(f=f, node=node, ns=ns, at=at,
+                              buffer_variables=buffer_variables, level=level)
+
+
+@_printnode.register(None)
+def _printnode_none(node, f, ns, at, level, buffer_variables, thint, lhint):
+    return ""
+
+
+@_printnode.register(_Assign)
+def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
+    lhs = _printexpr(node.l, f, ns, at, True, buffer_variables, _THint.logic, None)
+    rhs = _printexpr(node.r, f, ns, at, False, buffer_variables, _THint.logic,
+                     "{}'length".format(lhs) if len(node.l) > 1 else None)
+
+    return "{}{} {} {}".format(_indent(level), lhs, ":=" if at == _AT_BLOCKING else "<=", rhs)
+
+
+_architecturetemplate = Template(
+"""\
+<%!
+from toolz.curried import (filter, pipe, comp, first, second, curry, concat,
+    juxt, identity, partial)
+from operator import attrgetter, is_, methodcaller
+is_ = curry(is_)
+from migen.fhdl.vhdl import (_reg_typename, _v_name, _r_name, _rin_name,
+    _indent, _printnode, _get_sigtype,
+    _AT_BLOCKING, _AT_SIGNAL, _AT_NONBLOCKING)
+
+_architecture_id = "two_process_{}".format
+%>
+architecture ${_architecture_id(name)} of ${name} is
+
+% for cd, sigs in cd_regs:
+type ${_reg_typename(cd)} is record
+% for sig in sigs:
+    ${ns.get_name(sig)}: ${_get_sigtype(sig)};
+% endfor
+end record ${_reg_typename(cd)};
+
+signal ${_rin_name(cd)}: ${_reg_typename(cd)}; -- register input for cd "${cd}"
+signal ${_r_name(cd)}: ${_reg_typename(cd)}; -- register for cd "${cd}"
+
+begin
+
+% endfor
+comb: process (${", ".join(sensitivity_list)}) is
+
+% for cd, _ in cd_regs:
+variable ${_v_name(cd)}: ${_reg_typename(cd)};  -- variable for cd "${cd}"
+% endfor
+% for v in variables:
+variable ${ns.get_name(v)}: ${_get_sigtype(v)};
+% endfor
+% for v in buffer_variables:
+variable ${_v_name(ns.get_name(v))}: ${_get_sigtype(v)};
+% endfor
+
+begin
+
+-- defaults
+% for cd in map(first, cd_regs):
+${_indent(1)}${_v_name(cd)} := ${_r_name(cd)};
+% endfor
+
+% for v in variables:
+${_printnode(pipe(assignments, filter(comp(is_(v), attrgetter("l"))), next),
+    f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
+% endfor
+% for v in buffer_variables:
+${pipe(assignments, filter(comp(is_(v), attrgetter("l"))), next,
+    partial(_printnode, f=f, ns=ns, at=_AT_BLOCKING, level=1,
+            buffer_variables=buffer_variables, thint=None, lhint=None))};
+% endfor
+
+% if len(sync_statements):
+% for statement in map(second, sync_statements):
+${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
+% endfor
+% endif
+-- drive register input
+% for cd in map(first, cd_regs):
+${_indent(1)}${_rin_name(cd)} <= ${_v_name(cd)};
+% endfor
+## ${str(list(assignments))}
+-- drive outputs
+% for assignment in assignments:
+% if not assignment.l in variables:
+${_indent(1)}${pipe(assignment, attrgetter("l"), ns.get_name,
+       juxt([identity, _v_name]), " <= ".join)};
+## ${_printnode(assignment, f, ns, _AT_NONBLOCKING, 1, buffer_variables, None, None)};
+% endif
+% endfor
+end process comb;
+
+% for cd in cds:
+${cd.name}_seq: process (${ns.get_name(cd.clk)})
+begin
+${_indent(1)}if rising_edge(${ns.get_name(cd.clk)}) then
+${_indent(2)}${_r_name(cd.name)} <= ${_rin_name(cd.name)};
+${_indent(1)}end if;
+end process;
+% endfor
+end architecture ${_architecture_id(name)};\
+""")
+
+
+def _printarchitecture(f, ios, name, ns):
+    return _architecturetemplate.render(
+        name=name,
+        ns=ns,
+        f=f,
+        sensitivity_list=_sensitivity_list(f, ns, ios),
+        cd_regs=pipe(f, _cd_regs, list),
+        variables=pipe(f, _comb_sigs, set, flip(sub, ios)),
+        buffer_variables=pipe(
+            f, _assignments, map(attrgetter("l")),
+            set, and_(ios), partial(sorted, key=hash)),
+        groups=group_by_targets(f.comb),
+        assignments=pipe(f, _assignments, list),
+        sync_statements=pipe(f, _sorted_sync, list),
+        cds=pipe(f, _get_clock_domains,
+                 partial(sorted, key=attrgetter("name"))))
+
+
+def convert(f, ios=None, name="top",
+            special_overrides=dict(),
+            create_clock_domains=True,
+            display_run=False,
+            asic_syntax=False):
+    r = ConvOutput()
+    if not isinstance(f, _Fragment):
+        f = f.get_fragment()
+    if ios is None:
+        ios = set()
+
+    for cd_name in sorted(list_clock_domains(f)):
+        try:
+            f.clock_domains[cd_name]
+        except KeyError:
+            if create_clock_domains:
+                cd = ClockDomain(cd_name)
+                f.clock_domains.append(cd)
+                ios |= {cd.clk, cd.rst}
+            else:
+                raise KeyError("Unresolved clock domain: '{}'".format(cd_name))
+
+    f = lower_complex_slices(f)
+    insert_resets(f)
+    f = lower_basics(f)
+    fs, lowered_specials = lower_specials(special_overrides, f.specials)
+    f += lower_basics(fs)
+
+    ns = build_namespace(unique(concatv(list_signals(f),
+                                        list_special_ios(f, True, True, True),
+                                        ios)), _reserved_keywords)
+    ns.clock_domains = f.clock_domains
+    r.ns = ns
+
+    r.set_main_source("".join([
+        _printentity(f, ios, name, ns),
+        _printarchitecture(f, ios, name, ns)]))
+
+    return r
