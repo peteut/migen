@@ -3,7 +3,6 @@ python:
   - 3.4
 
 env:
-  - TOXENV=py33
   - TOXENV=py34
   - TOXENV=docs
   - TOXENV=flake
