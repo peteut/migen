@@ -289,9 +289,8 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             elif thint == _THint.integer:
                 return _func_call_template.render(name="to_integer",
                                                   args=[_cast_unsigned([expr])])
-            elif _THint.boolean:
-                return _func_call_template.render(
-                    name="\\??\\", args=[expr])
+            elif thint == _THint.boolean:
+                return _func_call_template.render(name="\\??\\", args=[expr])
             else:
                 return "({})".format(expr)
     elif arity == 2:
@@ -307,12 +306,18 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             else:
                 return expr
         elif _is_comp_op(node):
-            r1, r2 = map(lambda x:
-                         _printexpr(x, f, ns, at, False,
-                                    buffer_variables,
-                                    _THint.integer if isinstance(x, Constant)
-                                    else _THint.un_signed, None),
-                         node.operands)
+            if all(map(comp(is_(1), len),node.operands)):
+                r1, r2 = map(partial(_printexpr, f=f, ns=ns, at=at, lhs=False,
+                                     buffer_variables=buffer_variables,
+                                     thint=_THint.logic, lhint=None),
+                             node.operands)
+            else:
+                r1, r2 = map(lambda x:
+                             _printexpr(x, f, ns, at, False,
+                                        buffer_variables,
+                                        _THint.integer if isinstance(x, Constant)
+                                        else _THint.un_signed, None),
+                             node.operands)
             if thint == _THint.logic:
                 return _func_call_template.render(
                     name=pipe(node, _get_op, "\\?{}\\".format),
@@ -389,6 +394,40 @@ def _printnode_if(node, f, ns, at, level, buffer_variables, thint, lhint):
     return _iftemplate.render(f=f, node=node, ns=ns, at=at,
                               buffer_variables=buffer_variables, level=level)
 
+_casetemplate = Template(
+"""\
+<%!
+from operator import attrgetter
+from toolz.curried import first, flip, filter, pipe, comp, filter, partial, get
+from migen.fhdl.vhdl import _indent, _printnode, _printexpr, _THint, Constant
+%>\
+<%
+css = pipe(node.cases.items(), filter(comp(flip(isinstance, Constant), first)),
+    tuple, partial(sorted, key=comp(attrgetter("value"), first)))
+default = get("default", node.cases, None)
+%>\
+${_indent(level)}case ${_printexpr(node.test, f, ns, at, False,
+    buffer_variables, _THint.integer, False)} is
+% for case in css:
+${_indent(level)}when ${_printexpr(
+    case[0], f, ns, at, False, buffer_variables, _THint.integer, None)} =>
+${_printnode(case[1], f, ns, at, level + 1, buffer_variables, None, None)};
+% endfor
+${_indent(level)}when others =>
+% if default:
+${_printnode(default, f, ns, at, level + 1, buffer_variables, None, None)};
+% else:
+${_indent(level)}null;
+% endif
+${_indent(level)}end case\
+""")
+
+
+@_printnode.register(Case)
+def _printnode_case(node, f, ns, at, level, buffer_variables, thint, lhint):
+    return _casetemplate.render(node=node, f=f, ns=ns, at=at,
+                                level=level, buffer_variables=buffer_variables)
+
 
 @_printnode.register(None)
 def _printnode_none(node, f, ns, at, level, buffer_variables, thint, lhint):
@@ -401,7 +440,8 @@ def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
     rhs = _printexpr(node.r, f, ns, at, False, buffer_variables, _THint.logic,
                      "{}'length".format(lhs) if len(node.l) > 1 else None)
 
-    return "{}{} {} {}".format(_indent(level), lhs, ":=" if at == _AT_BLOCKING else "<=", rhs)
+    return "{}{} {} {}".format(_indent(level), lhs,
+                               ":=" if at == _AT_BLOCKING else "<=", rhs)
 
 
 _architecturetemplate = Template(
