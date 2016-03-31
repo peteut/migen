@@ -55,7 +55,7 @@ _entitytemplate = Template(
 from migen.fhdl.vhdl import _get_sigtype
 %><%
 def _direction(sig):
-    return "inout" if sig in inouts else "out" if sig in targets  else "in"
+    return "inout" if sig in inouts else "out" if sig in targets else "in"
 %>\
 library ieee;
 use ieee.std_logic_1164.all;
@@ -105,20 +105,18 @@ _sorted_sync = comp(concatv, partial(sorted, key=get(0)), iteritems, _get_sync)
 _cd_regs = comp(
     map(juxt(
     [first,
-     comp(filter(complement(is_variable)),
+     comp(list, filter(complement(is_variable)),
           filter(comp(flip(isinstance, Signal))), list_targets, second)])),
     _sorted_sync)
-_assignments = comp(pluck(0), pluck(1),
-                    filter(comp(reduce(and_),
-                                juxt([comp(is_(1), len, get(1)),
-                                      comp(flip(isinstance, _Assign),
-                                           get_in([1, 0]))]))),
+_assignment_filter_fn = comp(
+    reduce(and_), juxt([comp(is_(1), len, first),
+                        comp(flip(isinstance, _Assign), get_in([1, 0]))]))
+_assignments = comp(pluck(0), pluck(1), filter(_assignment_filter_fn),
                     concatv, group_by_targets, _get_comb)
-_comb_sigs = comp(
-    reduce(sub),
-    juxt([comp(set, map(attrgetter("l")),  _assignments),
-          comp(set, pluck(1), _cd_regs)]))
-_sorted_comb = comp(concatv, partial(sorted, key=get(0)), iteritems, _get_comb)
+_comb = comp(filter(complement(_assignment_filter_fn)),
+             concatv, group_by_targets, _get_comb)
+_comb_statements = comp(pluck(1), _comb)
+# _comb_sigs = comp(concat, pluck(0), _comb)
 
 
 def _sensitivity_list(f, ns, ios):
@@ -180,25 +178,24 @@ def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
 
 @_printexpr.register(Signal)
 def _printexpr_signal(node, f, ns, at, lhs, buffer_variables, thint, lhint):
-    cd = pipe(f,
-              _cd_regs,
-              map(juxt(
-                  [first,
-                   comp(flip(contains, node), second)])),
-              filter(second),
-              map(first),
-              list) if f else []
-
+    cd = pipe(f,_cd_regs, map(juxt(
+        [first, comp(flip(contains, node), second)])),
+        filter(second), map(first), list)
     if node in buffer_variables:
         identifier = pipe(node, ns.get_name, _v_name)
     else:
         identifier = ns.get_name(node) if len(cd) == 0 else \
-            ".".join([_v_name(cd[0]) if lhs else _r_name(cd[0]), ns.get_name(node)])
-    casted = _cast_signed([identifier]) if node.signed else \
-        _cast_unsigned([identifier])
+            ".".join([_v_name(cd[0]) if lhs else _r_name(cd[0]),
+                      ns.get_name(node)])
+    if len(node) == 1:
+        casted = _func_call_template.render(
+            name="unsigned'", args=" & ".join(["\"\"", identifier]))
+    else:
+        casted = _cast_signed([identifier]) if node.signed else \
+            _cast_unsigned([identifier])
     if thint == _THint.boolean:
         assert len(node) == 1
-        return _func_call_template.render(name="\\??\\", args=[ns.get_name(node)])
+        return _func_call_template.render(name="\\??\\", args=[identifier])
     if thint == _THint.un_signed:
         return casted
     elif thint == _THint.integer:
@@ -209,7 +206,8 @@ def _printexpr_signal(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             args=[_func_call_template.render(
                 name="to_unsigned",
                 args=[_func_call_template.render(
-                    name="to_integer", args=[_cast_unsigned([identifier])]), lhint])])
+                    name="to_integer", args=[_cast_unsigned([identifier])]),
+                    lhint])])
     else:
         return identifier
 
@@ -277,9 +275,11 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             if thint == _THint.un_signed:
                 return expr
             elif thint == _THint.integer:
-                return _func_call_template.render(name="to_integer", args=[expr])
+                return _func_call_template.render(
+                    name="to_integer", args=[expr])
             elif thint == _THint.logic:
-                return _func_call_template.render(name="std_logic_vector", args=[expr])
+                return _func_call_template.render(
+                    name="std_logic_vector", args=[expr])
             else:
                 return expr
         else:
@@ -397,9 +397,8 @@ def _printnode_if(node, f, ns, at, level, buffer_variables, thint, lhint):
 _casetemplate = Template(
 """\
 <%!
-from operator import attrgetter
-from toolz.curried import first, flip, filter, pipe, comp, filter, partial, get
-from migen.fhdl.vhdl import _indent, _printnode, _printexpr, _THint, Constant
+from migen.fhdl.vhdl import (_indent, _printnode, _printexpr, _THint, Constant,
+    first, flip, filter, pipe, comp, filter, partial, get, attrgetter)
 %>\
 <%
 css = pipe(node.cases.items(), filter(comp(flip(isinstance, Constant), first)),
@@ -436,7 +435,8 @@ def _printnode_none(node, f, ns, at, level, buffer_variables, thint, lhint):
 
 @_printnode.register(_Assign)
 def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
-    lhs = _printexpr(node.l, f, ns, at, True, buffer_variables, _THint.logic, None)
+    lhs = _printexpr(node.l, f, ns, at, True, buffer_variables, _THint.logic,
+                     None)
     rhs = _printexpr(node.r, f, ns, at, False, buffer_variables, _THint.logic,
                      "{}'length".format(lhs) if len(node.l) > 1 else None)
 
@@ -447,13 +447,10 @@ def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
 _architecturetemplate = Template(
 """\
 <%!
-from toolz.curried import (filter, pipe, comp, first, second, curry, concat,
-    juxt, identity, partial)
-from operator import attrgetter, is_, methodcaller
-is_ = curry(is_)
 from migen.fhdl.vhdl import (_reg_typename, _v_name, _r_name, _rin_name,
-    _indent, _printnode, _get_sigtype,
-    _AT_BLOCKING, _AT_SIGNAL, _AT_NONBLOCKING)
+    _indent, _printnode, _get_sigtype, _Assign, _AT_BLOCKING,
+    contains, map, filter, pipe, comp, first, second,
+    juxt, identity, attrgetter)
 
 _architecture_id = "two_process_{}".format
 %>
@@ -473,7 +470,6 @@ begin
 
 % endfor
 comb: process (${", ".join(sensitivity_list)}) is
-
 % for cd, _ in cd_regs:
 variable ${_v_name(cd)}: ${_reg_typename(cd)};  -- variable for cd "${cd}"
 % endfor
@@ -485,22 +481,23 @@ variable ${_v_name(ns.get_name(v))}: ${_get_sigtype(v)};
 % endfor
 
 begin
-
 -- defaults
 % for cd in map(first, cd_regs):
 ${_indent(1)}${_v_name(cd)} := ${_r_name(cd)};
 % endfor
-
 % for v in variables:
-${_printnode(pipe(assignments, filter(comp(is_(v), attrgetter("l"))), next),
-    f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
+${_printnode(_Assign(v, v.reset), f, ns, _AT_BLOCKING, 1,
+    buffer_variables, None, None)};
 % endfor
-% for v in buffer_variables:
-${pipe(assignments, filter(comp(is_(v), attrgetter("l"))), next,
-    partial(_printnode, f=f, ns=ns, at=_AT_BLOCKING, level=1,
-            buffer_variables=buffer_variables, thint=None, lhint=None))};
+-- comb statements
+% for statement in comb_statements:
+${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
 % endfor
-
+% for statement in filter(comp(contains(buffer_variables), attrgetter("l")),\
+    assignments):
+${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
+% endfor
+-- sync statements
 % if len(sync_statements):
 % for statement in map(second, sync_statements):
 ${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
@@ -510,14 +507,18 @@ ${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
 % for cd in map(first, cd_regs):
 ${_indent(1)}${_rin_name(cd)} <= ${_v_name(cd)};
 % endfor
-## ${str(list(assignments))}
 -- drive outputs
-% for assignment in assignments:
-% if not assignment.l in variables:
-${_indent(1)}${pipe(assignment, attrgetter("l"), ns.get_name,
-       juxt([identity, _v_name]), " <= ".join)};
-## ${_printnode(assignment, f, ns, _AT_NONBLOCKING, 1, buffer_variables, None, None)};
-% endif
+% for v in buffer_variables:
+${_indent(1)}${pipe(v, ns.get_name, juxt([identity, _v_name]), " <= ".join)};
+% endfor
+% for cd in cd_regs:
+-- drive ${cd[0]} regs
+% for sig in pipe(cd, second, filter(contains(ios))):
+${_indent(1)}${pipe(sig, ns.get_name,
+    juxt([identity,
+          comp(".".join, juxt([lambda _: _r_name(cd[0]), identity]))]),
+          " <= ".join)};
+% endfor
 % endfor
 end process comb;
 
@@ -532,21 +533,29 @@ end process;
 end architecture ${_architecture_id(name)};\
 """)
 
+def _variables(f, ios):
+    return sorted(pipe(f, juxt([
+        _sigs, comp(set, concat, map(second), _cd_regs)]),
+        reduce(sub)) - ios, key=hash)
+
 
 def _printarchitecture(f, ios, name, ns):
     return _architecturetemplate.render(
         name=name,
         ns=ns,
         f=f,
+        ios=ios,
         sensitivity_list=_sensitivity_list(f, ns, ios),
         cd_regs=pipe(f, _cd_regs, list),
-        variables=pipe(f, _comb_sigs, set, flip(sub, ios)),
-        buffer_variables=pipe(
-            f, _assignments, map(attrgetter("l")),
-            set, and_(ios), partial(sorted, key=hash)),
+        variables=_variables(f, ios),
+        buffer_variables=sorted(
+            pipe(f, _assignments, map(attrgetter("l")), set, and_(ios)) |
+            pipe(f, juxt([_targets, comp(set, concat, map(second), _cd_regs)]),
+                 reduce(sub)) - set(_variables(f, ios)), key=hash),
         groups=group_by_targets(f.comb),
         assignments=pipe(f, _assignments, list),
         sync_statements=pipe(f, _sorted_sync, list),
+        comb_statements=pipe(f, _comb_statements, list),
         cds=pipe(f, _get_clock_domains,
                  partial(sorted, key=attrgetter("name"))))
 
@@ -584,7 +593,6 @@ def convert(f, ios=None, name="top",
                                         ios)), _reserved_keywords)
     ns.clock_domains = f.clock_domains
     r.ns = ns
-
     r.set_main_source("".join([
         _printentity(f, ios, name, ns),
         _printarchitecture(f, ios, name, ns)]))
