@@ -121,9 +121,6 @@ class _Value:
         """
         return _Assign(self, r)
 
-    def __hash__(self):
-        raise TypeError("unhashable type: '{}'".format(type(self).__name__))
-
 
 def wrap(value):
     """Ensures that the passed object is a Migen value. Booleans and integers

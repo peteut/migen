@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, Hashable
 try:
     from functools import singledispatch
 except ImportError:
@@ -22,6 +22,7 @@ from operator import (is_, and_, or_, and_, attrgetter, sub,
 
 is_, and_, mul, sub, contains = map(curry, [is_, and_, mul, sub, contains])
 
+_isinstance = flip(isinstance)
 
 __all__ = ["convert"]
 
@@ -57,13 +58,13 @@ from migen.fhdl.vhdl import _get_sigtype
 def _direction(sig):
     return "inout" if sig in inouts else "out" if sig in targets else "in"
 %>\
+-- Machine generated using Migen - experimental VHDL backend
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library ieee_proposed;
 use ieee_proposed.numeric_std_additions.all;
 use ieee_proposed.std_logic_1164_additions.all;
-
 
 entity ${name} is
 % for sig in ios:
@@ -106,11 +107,11 @@ _cd_regs = comp(
     map(juxt(
     [first,
      comp(list, filter(complement(is_variable)),
-          filter(comp(flip(isinstance, Signal))), list_targets, second)])),
+          filter(comp(_isinstance(Signal))), list_targets, second)])),
     _sorted_sync)
 _assignment_filter_fn = comp(
     reduce(and_), juxt([comp(is_(1), len, first),
-                        comp(flip(isinstance, _Assign), get_in([1, 0]))]))
+                        comp(_isinstance(_Assign), get_in([1, 0]))]))
 _assignments = comp(pluck(0), pluck(1), filter(_assignment_filter_fn),
                     concatv, group_by_targets, _get_comb)
 _comb = comp(filter(complement(_assignment_filter_fn)),
@@ -126,7 +127,8 @@ def _sensitivity_list(f, ns, ios):
          pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
         map(ns.get_name),
         flip(concatv, pipe(f, _get_clock_domains, map(attrgetter("name")),
-                           map(_r_name))))
+                           map(_r_name))),
+        tuple)
 
 _indent = mul("    ")
 _AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL = range(3)
@@ -138,18 +140,22 @@ def _printexpr(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     raise NotImplementedError("{} not implemented".format(type(node)))
 
 
-_func_call_template = Template( """\
+_fntemplate = Template( """\
 <%! from collections import Iterable
 
 def _iterable(arg):
     return isinstance(arg, Iterable) and not isinstance(arg, str)
 %>\
-${name | trim}(${", ".join(map(str, args)) if _iterable(args) else args})""")
+${name | trim}(${", ".join(map(str, args)) if _iterable(args) else args})\
+""")
 
-_cast_unsigned = comp(lambda kws: _func_call_template.render(**kws),
-                      assoc({"name": "unsigned"}, "args"))
-_cast_signed = comp(lambda kws: _func_call_template.render(**kws),
-                    assoc({"name": "signed"}, "args"))
+
+def _fn_call(name, *args):
+    return _fntemplate.render(name=name, args=args)
+
+_unsigned, _signed, _std_logic_vector, _to_integer = map(
+    partial(partial, _fn_call),
+    ["unsigned", "signed", "std_logic_vector", "to_integer"])
 
 
 @_printexpr.register(Constant)
@@ -165,15 +171,12 @@ def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
         elif node.value == 2 ** len(node) - 1:
             return "(others => '1')"
         else:
-            return _func_call_template.render(
-                name="std_logic_vector",
-                args=[_func_call_template.render(
-                    name="to_signed" if node.signed else "to_unsigned",
-                    args=[node.value, lhint or len(node)])])
+            return _std_logic_vector(
+                _fn_call("to_signed" if node.signed else "to_unsigned",
+                         node.value, lhint or len(node)))
     else:
-        return _func_call_template.render(
-            name="to_signed" if node.signed else "to_unsigned",
-            args=[node.value, lhint or len(node)])
+        return _fn_call("to_signed" if node.signed else "to_unsigned",
+                        node.value, lhint or len(node))
 
 
 @_printexpr.register(Signal)
@@ -188,26 +191,20 @@ def _printexpr_signal(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             ".".join([_v_name(cd[0]) if lhs else _r_name(cd[0]),
                       ns.get_name(node)])
     if len(node) == 1:
-        casted = _func_call_template.render(
-            name="unsigned'", args=" & ".join(["\"\"", identifier]))
+        casted = _unsigned(" & ".join(["\"\"", identifier]))
     else:
-        casted = _cast_signed([identifier]) if node.signed else \
-            _cast_unsigned([identifier])
+        casted = _signed(identifier) if node.signed else _unsigned(identifier)
     if thint == _THint.boolean:
         assert len(node) == 1
-        return _func_call_template.render(name="\\??\\", args=[identifier])
+        return _fn_call("\\??\\", identifier)
     if thint == _THint.un_signed:
         return casted
     elif thint == _THint.integer:
-        return _func_call_template.render(name="to_integer", args=[casted])
+        return _fn_call("to_integer", casted)
     elif thint == _THint.logic and lhint:
-        return _func_call_template.render(
-            name="std_logic_vector",
-            args=[_func_call_template.render(
-                name="to_unsigned",
-                args=[_func_call_template.render(
-                    name="to_integer", args=[_cast_unsigned([identifier])]),
-                    lhint])])
+        return _std_logic_vector(
+            _fn_call("to_unsigned",
+                     _fn_call("to_integer", _unsigned(identifier)), lhint))
     else:
         return identifier
 
@@ -223,11 +220,9 @@ def _printexpr_slice(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     if thint == _THint.un_signed:
         return _cast_unsigned([expr])
     elif thint == _THint.integer:
-        return _func_call_template.render(
-            name="to_integer", args=[_cast_unsigned([expr])])
+        return _fn_call("to_integer", _unsigned(expr))
     elif thint == _THint.boolean:
-        return _func_call_template.render(
-            name="\\??\\", args=[expr])
+        return _fn_call("\\??\\", expr)
     else:
         return expr
 
@@ -240,10 +235,9 @@ def _printexpr_cat(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                      thint=_THint.logic, lhint=None))),
         tuple, reversed, " & ".join, "({})".format)
     if thint == _THint.un_signed:
-        return _cast_unsigned([expr])
+        return _unsigned(expr)
     elif thint == _THint.integer:
-        return _func_call_template.render(
-            name="to_integer", args=[_cast_unsigned([expr])])
+        return _fn_call("to_integer", _unsigned(expr))
     else:
         return expr
 
@@ -271,26 +265,23 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
         r1 = _printexpr(node.operands[0], f, ns, at, False,
                         buffer_variables, _THint.logic, None)
         if node.op == "-":
-            expr = "(-{})".format(_cast_signed([r1]))
+            expr = "(-{})".format(_signed(r1))
             if thint == _THint.un_signed:
                 return expr
             elif thint == _THint.integer:
-                return _func_call_template.render(
-                    name="to_integer", args=[expr])
+                return _to_integer("to_integer", expr)
             elif thint == _THint.logic:
-                return _func_call_template.render(
-                    name="std_logic_vector", args=[expr])
+                return _std_logic_vector("std_logic_vector", expr)
             else:
                 return expr
         else:
             expr = "{} {}".format(_get_op(node), r1)
             if thint == _THint.un_signed:
-                return _cast_unsigned([expr])
+                return _unsigned(expr)
             elif thint == _THint.integer:
-                return _func_call_template.render(name="to_integer",
-                                                  args=[_cast_unsigned([expr])])
+                return _fn_call("to_integer", _unsigned(expr))
             elif thint == _THint.boolean:
-                return _func_call_template.render(name="\\??\\", args=[expr])
+                return _fn_call("\\??\\", expr)
             else:
                 return "({})".format(expr)
     elif arity == 2:
@@ -300,9 +291,9 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                                  thint=_THint.logic, lhint=None), node.operands)
             expr = " ".join([r1, _get_op(node), r2])
             if thint == _THint.un_signed:
-                return _cast_unsigned([expr])
+                return _unsigned(expr)
             elif thint == _THint.integer:
-                return _func_call_template.render(name="to_integer", args=[expr])
+                return _fn_call("to_integer", expr)
             else:
                 return expr
         elif _is_comp_op(node):
@@ -319,9 +310,7 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                                         else _THint.un_signed, None),
                              node.operands)
             if thint == _THint.logic:
-                return _func_call_template.render(
-                    name=pipe(node, _get_op, "\\?{}\\".format),
-                    args=[r1, r2])
+                return _fn_call(pipe(node, _get_op, "\\?{}\\".format), r1, r2)
             else:
                 return " ".join([r1, _get_op(node), r2])
         elif _is_shift_op(node):
@@ -331,14 +320,11 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                                     _THint.integer if isinstance(x, Constant)
                                     else _THint.un_signed, None),
                          node.operands)
-            expr = _func_call_template.render(
-                name=_shift_op[node.op],
-                args=[r1, r2])
+            expr = _fn_call(_shift_op[node.op], r1, r2)
             if thint == _THint.integer:
-                return _func_call_template.render(name="to_integer", args=[expr])
+                return _fn_call("to_integer", expr)
             elif thint == _THint.logic:
-                return _func_call_template.render(
-                    name="std_logic_vector", args=[expr])
+                return _std_logic_vector(expr)
             else:
                 return expr
         elif _is_arith_op(node):
@@ -350,10 +336,9 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                          node.operands)
             expr = " ".join([r1, _arith_op_map[node.op], r2])
             if thint == _THint.integer:
-                return _func_call_template.render(name="to_integer", args=[expr])
+                return _fn_call("to_integer", expr)
             elif thint == _THint.logic:
-                return _func_call_template.render(
-                    name="std_logic_vector", args=[expr])
+                return _std_logic_vector(expr)
             else:
                 return expr
 
@@ -466,10 +451,14 @@ end record ${_reg_typename(cd)};
 signal ${_rin_name(cd)}: ${_reg_typename(cd)}; -- register input for cd "${cd}"
 signal ${_r_name(cd)}: ${_reg_typename(cd)}; -- register for cd "${cd}"
 
+% endfor
 begin
 
-% endfor
+% if not len(sensitivity_list):
+comb: process
+% else:
 comb: process (${", ".join(sensitivity_list)}) is
+% endif
 % for cd, _ in cd_regs:
 variable ${_v_name(cd)}: ${_reg_typename(cd)};  -- variable for cd "${cd}"
 % endfor
@@ -512,7 +501,7 @@ ${_indent(1)}${_rin_name(cd)} <= ${_v_name(cd)};
 ${_indent(1)}${pipe(v, ns.get_name, juxt([identity, _v_name]), " <= ".join)};
 % endfor
 % for cd in cd_regs:
--- drive ${cd[0]} regs
+-- drive "${cd[0]}" regs
 % for sig in pipe(cd, second, filter(contains(ios))):
 ${_indent(1)}${pipe(sig, ns.get_name,
     juxt([identity,
@@ -549,7 +538,9 @@ def _printarchitecture(f, ios, name, ns):
         cd_regs=pipe(f, _cd_regs, list),
         variables=_variables(f, ios),
         buffer_variables=sorted(
-            pipe(f, _assignments, map(attrgetter("l")), set, and_(ios)) |
+            pipe(f, _assignments, map(attrgetter("l")),
+                 filter(_isinstance(Hashable)),
+                 set, and_(ios)) |
             pipe(f, juxt([_targets, comp(set, concat, map(second), _cd_regs)]),
                  reduce(sub)) - set(_variables(f, ios)), key=hash),
         groups=group_by_targets(f.comb),
