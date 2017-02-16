@@ -1,4 +1,5 @@
 from copy import copy
+from operator import itemgetter
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import (_Operator, _Slice, _Assign, _ArrayProxy,
@@ -37,7 +38,7 @@ class NodeVisitor:
             self.visit_clock_domains(node)
         elif isinstance(node, _ArrayProxy):
             self.visit_ArrayProxy(node)
-        elif node is not None:
+        else:
             self.visit_unknown(node)
 
     def visit_Constant(self, node):
@@ -77,7 +78,8 @@ class NodeVisitor:
 
     def visit_Case(self, node):
         self.visit(node.test)
-        for v, statements in node.cases.items():
+        for v, statements in sorted(node.cases.items(),
+                                    key=lambda x: str(x[0])):
             self.visit(statements)
 
     def visit_Fragment(self, node):
@@ -89,7 +91,7 @@ class NodeVisitor:
             self.visit(statement)
 
     def visit_clock_domains(self, node):
-        for clockname, statements in node.items():
+        for clockname, statements in sorted(node.items(), key=itemgetter(0)):
             self.visit(statements)
 
     def visit_ArrayProxy(self, node):
@@ -138,10 +140,8 @@ class NodeTransformer:
             return self.visit_clock_domains(node)
         elif isinstance(node, _ArrayProxy):
             return self.visit_ArrayProxy(node)
-        elif node is not None:
-            return self.visit_unknown(node)
         else:
-            return None
+            return self.visit_unknown(node)
 
     def visit_Constant(self, node):
         return node
@@ -177,7 +177,9 @@ class NodeTransformer:
         return r
 
     def visit_Case(self, node):
-        cases = dict((v, self.visit(statements)) for v, statements in node.cases.items())
+        cases = {v: self.visit(statements)
+                 for v, statements in sorted(node.cases.items(),
+                                             key=lambda x: str(x[0]))}
         r = Case(self.visit(node.test), cases)
         return r
 
@@ -192,7 +194,9 @@ class NodeTransformer:
         return [self.visit(statement) for statement in node]
 
     def visit_clock_domains(self, node):
-        return dict((clockname, self.visit(statements)) for clockname, statements in node.items())
+        return {clockname: self.visit(statements)
+            for clockname, statements in sorted(node.items(),
+                                                key=itemgetter(0))}
 
     def visit_ArrayProxy(self, node):
         return _ArrayProxy([self.visit(choice) for choice in node.choices],

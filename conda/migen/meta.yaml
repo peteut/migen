@@ -13,15 +13,19 @@ build:
 
 requirements:
   build:
-    - python 3.5.*
+    - python 3.5*
+    - sphinx
+    - sphinx_rtd_theme
+    - colorama
   run:
-    - python 3.5.*
+    - python 3.5*
+    - colorama
 
 test:
   imports:
     - migen
 
 about:
-  home: http://m-labs.hk/gateware.html
+  home: https://m-labs.hk/gateware.html
   license: 3-clause BSD
   summary: 'A Python toolbox for building complex digital hardware'

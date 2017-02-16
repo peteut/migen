@@ -117,7 +117,12 @@ class Instance(Special):
         self.items = list(items)
         self.synthesis_directive = synthesis_directive
         for k, v in sorted(kwargs.items(), key=itemgetter(0)):
-            item_type, item_name = k.split("_", maxsplit=1)
+            try:
+                item_type, item_name = k.split("_", maxsplit=1)
+            except ValueError:
+                raise TypeError("Wrong format for value '" + str(k) +
+                                "', format should be 'type_name'")
+
             item_class = {
                 "i": Instance.Input,
                 "o": Instance.Output,
@@ -283,7 +288,7 @@ class Memory(Special):
         data_regs = {}
         for port in memory.ports:
             if not port.async_read:
-                if port.mode == WRITE_FIRST and port.we is not None:
+                if port.mode == WRITE_FIRST:
                     adr_reg = Signal(name_override="memadr")
                     r += "".join(("reg [{}:0] ".format(adrbits - 1),
                                   gn(adr_reg), ";\n"))
@@ -311,13 +316,13 @@ class Memory(Special):
                     r += "\t\t{}[{}] <= {};\n".format(
                         gn(memory), gn(port.adr), gn(port.dat_w))
             if not port.async_read:
-                if port.mode == WRITE_FIRST and port.we is not None:
+                if port.mode == WRITE_FIRST:
                     rd = "\t{} <= {};\n".format(
                         gn(adr_regs[id(port)]), gn(port.adr))
                 else:
                     bassign = "{} <= {}[{}];\n".format(
                         gn(data_regs[id(port)]), gn(memory), gn(port.adr))
-                    if port.mode == READ_FIRST or port.we is None:
+                    if port.mode == READ_FIRST:
                         rd = "\t" + bassign
                     elif port.mode == NO_CHANGE:
                         rd = ("\tif (!{})\n".format(gn(port.we))
@@ -334,7 +339,7 @@ class Memory(Special):
                 r += "assign {} = {}[{}];\n".format(
                     gn(port.dat_r), gn(memory), gn(port.adr))
             else:
-                if port.mode == WRITE_FIRST and port.we is not None:
+                if port.mode == WRITE_FIRST:
                     r += "assign {} = {}[{}];\n".format(
                         gn(port.dat_r), gn(memory), gn(adr_regs[id(port)]))
                 else:
@@ -353,21 +358,3 @@ class Memory(Special):
             r += "end\n\n"
 
         return r
-
-
-class SynthesisDirective(Special):
-    def __init__(self, template, **signals):
-        super().__init__()
-        self.template = template
-        self.signals = signals
-
-    @staticmethod
-    def emit_verilog(directive, ns, add_data_file):
-        name_dict = dict((k, ns.get_name(sig)) for k, sig in directive.signals.items())
-        formatted = directive.template.format(**name_dict)
-        return "// synthesis " + formatted + "\n"
-
-
-class Keep(SynthesisDirective):
-    def __init__(self, signal):
-        super().__init__("attribute keep of {s} is true", s=signal)

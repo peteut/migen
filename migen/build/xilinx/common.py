@@ -1,15 +1,34 @@
 import os
 import sys
+try:
+    import colorama
+    colorama.init()  # install escape sequence translation on Windows
+    _have_colorama = True
+except ImportError:
+    _have_colorama = False
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.specials import Instance
 from migen.fhdl.module import Module
-from migen.fhdl.specials import SynthesisDirective
 from migen.genlib.cdc import *  # noqa
 from migen.genlib.resetsync import AsyncResetSynchronizer
 from migen.genlib.io import *  # noqa
 
 from migen.build import tools
+
+
+colors = []
+if _have_colorama:
+    colors += [
+        ("^ERROR:.*$", colorama.Fore.RED + colorama.Style.BRIGHT +
+         r"\g<0>" + colorama.Style.RESET_ALL),
+        ("^CRITICAL WARNING:.*$", colorama.Fore.RED +
+         r"\g<0>" + colorama.Style.RESET_ALL),
+        ("^WARNING:.*$", colorama.Fore.YELLOW +
+         r"\g<0>" + colorama.Style.RESET_ALL),
+        ("^INFO:.*$", colorama.Fore.GREEN +
+         r"\g<0>" + colorama.Style.RESET_ALL),
+    ]
 
 
 def settings(path, ver=None, sub=None):
@@ -41,22 +60,12 @@ def settings(path, ver=None, sub=None):
     raise OSError("no Xilinx tools settings file found")
 
 
-class XilinxNoRetimingImpl(Module):
-    def __init__(self, reg):
-        self.specials += SynthesisDirective("attribute register_balancing of {r} is no", r=reg)
-
-
-class XilinxNoRetiming:
-    @staticmethod
-    def lower(dr):
-        return XilinxNoRetimingImpl(dr.reg)
-
-
 class XilinxMultiRegImpl(MultiRegImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.specials += [SynthesisDirective("attribute shreg_extract of {r} is no", r=r)
-            for r in self.regs]
+        for r in self.regs:
+            r.attr.add("async_reg")
+            r.attr.add("no_shreg_extract")
 
 
 class XilinxMultiReg:
@@ -74,6 +83,8 @@ class XilinxAsyncResetSynchronizerImpl(Module):
             Instance("FDPE", p_INIT=1, i_D=rst1, i_PRE=async_reset,
                 i_CE=1, i_C=cd.clk, o_Q=cd.rst)
         ]
+        rst1.attr.add("async_reg")
+        cd.rst.attr.add("async_reg")
 
 
 class XilinxAsyncResetSynchronizer:
@@ -120,7 +131,6 @@ class XilinxDDROutput:
 
 
 xilinx_special_overrides = {
-    NoRetiming:             XilinxNoRetiming,
     MultiReg:               XilinxMultiReg,
     AsyncResetSynchronizer: XilinxAsyncResetSynchronizer,
     DifferentialInput:      XilinxDifferentialInput,

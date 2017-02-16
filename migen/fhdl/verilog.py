@@ -115,9 +115,7 @@ _AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL = range(3)
 
 
 def _printnode(ns, at, level, node):
-    if node is None:
-        return ""
-    elif isinstance(node, _Assign):
+    if isinstance(node, _Assign):
         if at == _AT_BLOCKING:
             assignment = " = "
         elif at == _AT_NONBLOCKING:
@@ -167,8 +165,30 @@ def _list_comb_wires(f):
             r |= g[0]
     return r
 
+def _printattr(sig, attr_translate):
+    r = ""
+    firsta = True
+    for attr in sorted(sig.attr,
+                       key=lambda x: ("", x) if isinstance(x, str) else x):
+        if isinstance(attr, tuple):
+            # platform-dependent attribute
+            attr_name, attr_value = attr
+        else:
+            # translated attribute
+            at = attr_translate[attr]
+            if at is None:
+                continue
+            attr_name, attr_value = at
+        if not firsta:
+            r += ", "
+        firsta = False
+        r += attr_name + " = \"" + attr_value + "\""
+    if r:
+        r = "(* " + r + " *)"
+    return r
 
-def _printheader(f, ios, name, ns,
+
+def _printheader(f, ios, name, ns, attr_translate,
                  reg_initialization):
     sigs = list_signals(f) | list_special_ios(f, True, True, True)
     special_outs = list_special_ios(f, False, True, True)
@@ -181,6 +201,9 @@ def _printheader(f, ios, name, ns,
         if not firstp:
             r += ",\n"
         firstp = False
+        attr = _printattr(sig, attr_translate)
+        if attr:
+            r += "\t" + attr
         if sig in inouts:
             r += "\tinout " + _printsig(ns, sig)
         elif sig in targets:
@@ -192,6 +215,9 @@ def _printheader(f, ios, name, ns,
             r += "\tinput " + _printsig(ns, sig)
     r += "\n);\n\n"
     for sig in sorted(sigs - ios, key=hash):
+        attr = _printattr(sig, attr_translate)
+        if attr:
+            r += attr + " "
         if sig in wires:
             r += "wire " + _printsig(ns, sig) + ";\n"
         else:
@@ -210,15 +236,19 @@ def _printcomb(f, ns,
     r = ""
     if f.comb:
         if dummy_signal:
-            # Generate a dummy event to get the simulator
-            # to run the combinatorial process once at the beginning.
+            explanation = """
+// Adding a dummy event (using a dummy signal 'dummy_s') to get the simulator
+// to run the combinatorial process once at the beginning.
+"""
             syn_off = "// synthesis translate_off\n"
             syn_on = "// synthesis translate_on\n"
             dummy_s = Signal(name_override="dummy_s")
+            r += explanation
             r += syn_off
             r += "reg " + _printsig(ns, dummy_s) + ";\n"
             r += "initial " + ns.get_name(dummy_s) + " <= 1'd0;\n"
             r += syn_on
+            r += "\n"
 
         groups = group_by_targets(f.comb)
 
@@ -271,8 +301,14 @@ def _printspecials(overrides, specials, ns, add_data_file):
     return r
 
 
+class DummyAttrTranslate:
+    def __getitem__(self, k):
+        return (k, "true")
+
+
 def convert(f, ios=None, name="top",
   special_overrides=dict(),
+  attr_translate=DummyAttrTranslate(),
   create_clock_domains=True,
   display_run=False, asic_syntax=False):
     r = ConvOutput()
@@ -298,14 +334,19 @@ def convert(f, ios=None, name="top",
     fs, lowered_specials = lower_specials(special_overrides, f.specials)
     f += lower_basics(fs)
 
+    for io in sorted(ios, key=hash):
+        if io.name_override is None:
+            io_name = io.backtrace[-1][0]
+            if io_name:
+                io.name_override = io_name
     ns = build_namespace(list_signals(f)
-                         | list_special_ios(f, True, True, True)
-                         | ios, _reserved_keywords)
+        | list_special_ios(f, True, True, True)
+        | ios, _reserved_keywords)
     ns.clock_domains = f.clock_domains
     r.ns = ns
 
     src = "/* Machine-generated using Migen */\n"
-    src += _printheader(f, ios, name, ns,
+    src += _printheader(f, ios, name, ns, attr_translate,
                         reg_initialization=not asic_syntax)
     src += _printcomb(f, ns,
                       display_run=display_run,

@@ -38,7 +38,7 @@ The properties of a signal object are:
 * An integer or a (integer, boolean) pair that defines the number of bits and whether the bit of higher index of the signal is a sign bit (i.e. the signal is signed). The defaults are one bit and unsigned. Alternatively, the ``min`` and ``max`` parameters can be specified to define the range of the signal and determine its bit width and signedness. As with Python ranges, ``min`` is inclusive and defaults to 0, ``max`` is exclusive and defaults to 2.
 * A name, used as a hint for the V*HDL back-end name mangler.
 * The signal's reset value. It must be an integer, and defaults to 0. When the signal's value is modified with a synchronous statement, the reset value is the initialization value of the associated register. When the signal is assigned to in a conditional combinatorial statement (``If`` or ``Case``), the reset value is the value that the signal has when no condition that causes the signal to be driven is verified. This enforces the absence of latches in designs. If the signal is permanently driven using a combinatorial statement, the reset value has no effect.
-  
+
 The sole purpose of the name property is to make the generated V*HDL code easier to understand and debug. From a purely functional point of view, it is perfectly OK to have several signals with the same name property. The back-end will generate a unique name for each object. If no name property is specified, Migen will analyze the code that created the signal object, and try to extract the variable or member name from there. For example, the following statements will create one or several signals named "bar": ::
 
   bar = Signal()
@@ -74,6 +74,13 @@ Replications
 ============
 
 The ``Replicate`` object represents the equivalent of {count{expression}} in Verilog.
+For example, the expression: ::
+
+  Replicate(0, 4)
+
+is equivalent to::
+
+  Cat(0, 0, 0, 0)
 
 Statements
 **********
@@ -141,6 +148,8 @@ and write it with: ::
   my_2d_array[x][y].eq(inp)
 
 Since they have no direct equivalent in Verilog, ``Array`` objects are lowered into multiplexers and conditional statements before the actual conversion takes place. Such lowering happens automatically without any user intervention.
+
+Any out-of-bounds access performed on an ``Array`` object will refer to the last element.
 
 Specials
 ********
@@ -212,13 +221,6 @@ Options to ``get_port`` are:
 
 Migen generates behavioural V*HDL code that should be compatible with all simulators and, if the number of ports is <= 2, most FPGA synthesizers. If a specific code is needed, the memory handler can be overriden using the appropriate parameter of the V*HDL conversion function.
 
-Inline synthesis directives
-===========================
-
-Inline synthesis directives (pseudo-comments such as ``// synthesis attribute keep of clock_signal_name is true``) are supported using the ``SynthesisDirective`` object. Its constructor takes as parameters a string containing the body of the directive, and optional keyword parameters that are used to replace signal names similarly to the Python string method ``format``. The above example could be represented as follows: ::
-
-  SynthesisDirective("attribute keep of {clksig} is true", clksig=clock_domain.clk)
-
 Modules
 *******
 
@@ -241,7 +243,7 @@ For example, the module below implements a OR gate: ::
 
       ###
 
-      self.comb += x.eq(a | b)
+      self.comb += self.x.eq(self.a | self.b)
 
 To improve code readability, it is recommended to place the interface of the module at the beginning of the ``__init__`` function, and separate it from the implementation using three hash signs.
 
@@ -357,6 +359,6 @@ The clock domain management mechanism explained above happens during finalizatio
 Conversion for synthesis
 ************************
 
-Any FHDL module can be converted into synthesizable Verilog HDL. This is accomplished by using the ``convert`` function in the ``verilog`` module.
+Any FHDL module can be converted into synthesizable Verilog HDL. This is accomplished by using the ``convert`` function in the ``migen.fhdl.verilog`` module.
 
 The ``migen.build`` component provides scripts to interface third-party FPGA tools (from Xilinx, Altera and Lattice) to Migen, and a database of boards for the easy deployment of designs.
