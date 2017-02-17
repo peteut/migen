@@ -114,8 +114,7 @@ _assignment_filter_fn = comp(
                         comp(_isinstance(_Assign), get_in([1, 0]))]))
 _assignments = comp(pluck(0), pluck(1), filter(_assignment_filter_fn),
                     concatv, group_by_targets, _get_comb)
-_comb = comp(filter(complement(_assignment_filter_fn)),
-             concatv, group_by_targets, _get_comb)
+_comb = comp(concatv, group_by_targets, _get_comb)
 _comb_statements = comp(pluck(1), _comb)
 # _comb_sigs = comp(concat, pluck(0), _comb)
 
@@ -181,10 +180,10 @@ def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
 
 @_printexpr.register(Signal)
 def _printexpr_signal(node, f, ns, at, lhs, buffer_variables, thint, lhint):
-    cd = pipe(f,_cd_regs, map(juxt(
+    cd = pipe(f, _cd_regs, map(juxt(
         [first, comp(flip(contains, node), second)])),
         filter(second), map(first), list)
-    if node in buffer_variables:
+    if buffer_variables and node in buffer_variables:
         identifier = pipe(node, ns.get_name, _v_name)
     else:
         identifier = ns.get_name(node) if len(cd) == 0 else \
@@ -218,7 +217,7 @@ def _printexpr_slice(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     expr = "".join([_printexpr(node.value, f, ns, at, lhs, buffer_variables,
                                _THint.logic, None), sr])
     if thint == _THint.un_signed:
-        return _cast_unsigned([expr])
+        return _unsigned(expr)
     elif thint == _THint.integer:
         return _fn_call("to_integer", _unsigned(expr))
     elif thint == _THint.boolean:
@@ -271,7 +270,7 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             elif thint == _THint.integer:
                 return _to_integer("to_integer", expr)
             elif thint == _THint.logic:
-                return _std_logic_vector("std_logic_vector", expr)
+                return _std_logic_vector(expr)
             else:
                 return expr
         else:
@@ -473,10 +472,6 @@ begin
 -- defaults
 % for cd in map(first, cd_regs):
 ${_indent(1)}${_v_name(cd)} := ${_r_name(cd)};
-% endfor
-% for v in variables:
-${_printnode(_Assign(v, v.reset), f, ns, _AT_BLOCKING, 1,
-    buffer_variables, None, None)};
 % endfor
 -- comb statements
 % for statement in comb_statements:

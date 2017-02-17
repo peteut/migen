@@ -1,5 +1,7 @@
 from operator import itemgetter
 
+from mako.template import Template
+
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Value
 from migen.fhdl.bitcontainer import bits_for, value_bits_sign
@@ -74,6 +76,25 @@ class Tristate(Special):
         r += "\n"
         return r
 
+    @staticmethod
+    def emit_vhdl(tristate, ns, add_data_file):
+        trisatetemplate = Template(
+"""\
+<%!
+from migen.fhdl.vhdl import _indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING
+%>\
+<%
+printexpr = partial(_printexpr, ns=ns, f=_Fragment(), at=_AT_NONBLOCKING,
+            lhs=None, buffer_variables=None, thint=None, lhint=None)
+%>\
+${printexpr(tristate.target)} <= ${printexpr(tristate.o)}
+${_indent(1)}when \??\(${printexpr(tristate.oe)})
+${_indent(1)}else (others => 'Z');
+% if tristate.i is not None:
+${printexpr(tristate.i)} <= ${printexpr(tristate.target)};
+% endif
+""")
+        return trisatetemplate.render(tristate=tristate, ns=ns)
 
 class TSTriple:
     def __init__(self, bits_sign=None, min=None, max=None, reset_o=0, reset_oe=0):
