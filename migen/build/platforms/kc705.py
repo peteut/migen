@@ -35,8 +35,8 @@ _io = [
     ("user_sma_clock_p", 0, Pins("L25"), IOStandard("LVCMOS25")),
     ("user_sma_clock_n", 0, Pins("K25"), IOStandard("LVCMOS25")),
 
-    ("user_sma_gpio_p", 0, Pins("Y23"), IOStandard("LVCMOS33")),
-    ("user_sma_gpio_n", 0, Pins("Y24"), IOStandard("LVCMOS33")),
+    ("user_sma_gpio_p", 0, Pins("Y23"), IOStandard("LVCMOS25")),
+    ("user_sma_gpio_n", 0, Pins("Y24"), IOStandard("LVCMOS25")),
 
     ("clk200", 0,
         Subsignal("p", Pins("AD12"), IOStandard("LVDS")),
@@ -193,6 +193,41 @@ _io = [
     ),
 
     ("vadj_on_b", 0, Pins("J27"), IOStandard("LVCMOS25")),
+
+    ("sgmii_clock", 0,
+        Subsignal("p", Pins("G8")),
+        Subsignal("n", Pins("G7"))
+    ),
+    ("user_sma_mgt_tx", 0,
+        Subsignal("p", Pins("K2")),
+        Subsignal("n", Pins("K1"))
+    ),
+    ("user_sma_mgt_rx", 0,
+        Subsignal("p", Pins("K6")),
+        Subsignal("n", Pins("K5"))
+    ),
+    ("sfp_tx", 0,
+        Subsignal("p", Pins("H2")),
+        Subsignal("n", Pins("H1"))
+    ),
+    ("sfp_rx", 0,
+        Subsignal("p", Pins("G4")),
+        Subsignal("n", Pins("G3"))
+    ),
+    ("sfp_tx_disable_n", 0, Pins("Y20"), IOStandard("LVCMOS25")),
+
+    ("si5324", 0,
+        Subsignal("rst_n", Pins("AE20"), IOStandard("LVCMOS25")),
+        Subsignal("int", Pins("AG24"), IOStandard("LVCMOS25"))
+    ),
+    ("si5324_clkin", 0,
+        Subsignal("p", Pins("W27"), IOStandard("LVDS_25")),
+        Subsignal("n", Pins("W28"), IOStandard("LVDS_25"))
+    ),
+    ("si5324_clkout", 0,
+        Subsignal("p", Pins("L8")),
+        Subsignal("n", Pins("L7"))
+    ),
 ]
 
 
@@ -465,6 +500,10 @@ class Platform(XilinxPlatform):
             pass
         try:
             self.add_period_constraint(self.lookup_request("eth_clocks").rx, 8.0)
+        except ConstraintError:
+            pass
+        try:
+            self.add_period_constraint(self.lookup_request("eth_clocks").tx, 8.0)
         except ConstraintError:
             pass
         if isinstance(self.toolchain, XilinxISEToolchain):

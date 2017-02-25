@@ -5,7 +5,7 @@ from migen.fhdl.specials import Special
 
 class DifferentialInput(Special):
     def __init__(self, i_p, i_n, o):
-        super()__init__()
+        super().__init__()
         self.i_p = wrap(i_p)
         self.i_n = wrap(i_n)
         self.o = wrap(o)
@@ -38,6 +38,8 @@ class DifferentialOutput(Special):
 
 
 class CRG(Module):
+    """ Clock and Reset Generator """
+
     def __init__(self, clk, rst=0):
         self.clock_domains.cd_sys = ClockDomain()
         self.clock_domains.cd_por = ClockDomain(reset_less=True)

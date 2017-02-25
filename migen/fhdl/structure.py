@@ -1,6 +1,7 @@
 import builtins as _builtins
 import collections as _collections
 import itertools
+import re as _re
 
 from migen.fhdl import tracer as _tracer
 from migen.util.misc import flat_iteration as _flat_iteration
@@ -128,7 +129,8 @@ def wrap(value):
     if isinstance(value, (bool, int)):
         value = Constant(value)
     if not isinstance(value, _Value):
-        raise TypeError("Object is not a Migen value")
+        raise TypeError("Object '{}' of type {} is not a Migen value"
+                        .format(value, type(value)))
     return value
 
 
@@ -241,7 +243,7 @@ class Constant(_Value):
     def __init__(self, value, bits_sign=None):
         from migen.fhdl.bitcontainer import bits_for
 
-        _Value.__init__(self)
+        super().__init__()
 
         self.value = int(value)
         if bits_sign is None:
@@ -302,13 +304,22 @@ class Signal(_Value):
         determined by the integer range given by `min` (inclusive,
         defaults to 0) and `max` (exclusive, defaults to 2).
     related : Signal or None
+    attr : set of synthesis attributes
     """
+    _name_re = _re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
     def __init__(self, bits_sign=None, name=None, variable=False, reset=0,
-                 name_override=None, min=None, max=None, related=None):
+                 name_override=None, min=None, max=None, related=None,
+                 attr=None):
         from migen.fhdl.bitcontainer import bits_for
 
         super().__init__()
         self._duid = next(duid)
+
+        for n in [name, name_override]:
+            if n is not None and not self._name_re.match(n):
+                raise ValueError("Signal name {} is not a valid Python identifier"
+                                 .format(repr(n)))
 
         # determine number of bits and signedness
         if bits_sign is None:
@@ -326,14 +337,19 @@ class Signal(_Value):
                 self.nbits, self.signed = bits_sign
             else:
                 self.nbits, self.signed = bits_sign, False
+        if isinstance(reset, (bool, int)):
+            reset = Constant(reset, (self.nbits, self.signed))
         if not isinstance(self.nbits, int) or self.nbits <= 0:
             raise ValueError("Signal width must be a strictly positive integer")
+        if attr is None:
+            attr = set()
 
         self.variable = variable  # deprecated
         self.reset = reset
         self.name_override = name_override
         self.backtrace = _tracer.trace_back(name)
         self.related = related
+        self.attr = attr
 
     def __setattr__(self, k, v):
         if k == "reset":
@@ -536,16 +552,21 @@ class Case(_Statement):
 
         Parameters
         ----------
-        key : int or None
+        key : int, Constant or None
             Key to use as default case if no other key matches.
             By default, the largest key is the default key.
         """
         if key is None:
             for choice in self.cases.keys():
-                if key is None or choice.value > key.value:
+                if (key is None
+                        or (isinstance(choice, str) and choice == "default")
+                        or choice.value > key.value):
                     key = choice
-        self.cases["default"] = self.cases[key]
+        if not isinstance(key, str) or key != "default":
+            key = wrap(key)
+        stmts = self.cases[key]
         del self.cases[key]
+        self.cases["default"] = stmts
         return self
 
 
