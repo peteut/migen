@@ -1,6 +1,8 @@
+import subprocess
+import tempfile
+from os import path
 from migen import *  # noqa
-from migen.fhdl.vhdl import convert
-# from migen.fhdl.verilog import convert
+from migen.fhdl import vhdl
 from migen.genlib import divider
 
 
@@ -20,4 +22,8 @@ class Example(Module):
 
 if __name__ == "__main__":
     example = Example(16)
-    print(convert(example, example.ios | {example.ce, example.reset}))
+    fname = path.join(tempfile.gettempdir(), "two_dividers.vhd")
+    vhdl.convert(example, example.ios | {example.ce, example.reset}
+                 ).write(fname)
+    subprocess.check_call(["nvc", "--syntax", fname])
+    subprocess.check_call(["nvc", "-a", fname])

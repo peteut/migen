@@ -1,5 +1,8 @@
+import subprocess
+from os import path
+import tempfile
 from migen import *  # noqa
-from migen.fhdl import verilog
+from migen.fhdl import vhdl
 
 
 class Example(Module):
@@ -24,6 +27,9 @@ class Example(Module):
         ina = Array(Signal() for a in range(dx))
         outa = Array(Signal() for a in range(dy))
         self.specials += Instance("test", o_O=outa[y], i_I=ina[x])
+        self.specials += Instance("test", o_O=outa[y], i_I=ina[x])
 
 if __name__ == "__main__":
-    print(verilog.convert(Example()))
+    fname = path.join(tempfile.gettempdir(), "array.vhd")
+    vhdl.convert(Example()).write(fname)
+    subprocess.check_call(["nvc", "--syntax", fname])

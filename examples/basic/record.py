@@ -1,5 +1,9 @@
+import subprocess
+import tempfile
+from os import path
+
 from migen import *  # noqa
-from migen.fhdl import verilog
+from migen.fhdl import vhdl
 
 
 L = [
@@ -21,6 +25,9 @@ class Test(Module):
 
 
 if __name__ == "__main__":
-    print(verilog.convert(Test()))
+    fname = path.join(tempfile.gettempdir(), "record.vhd")
+    vhdl.convert(Test()).write(fname)
+    subprocess.check_call(["nvc", "--syntax", fname])
+    subprocess.check_call(["nvc", "--std=2008", "-a", fname])
     print(layout_len(L))
     print(layout_partial(L, "position/x", "color"))

@@ -1,4 +1,5 @@
 from collections import Iterable, Hashable
+import operator
 try:
     from functools import singledispatch
 except ImportError:
@@ -120,14 +121,12 @@ _comb_statements = comp(pluck(1), _comb)
 
 
 def _sensitivity_list(f, ns, ios):
-    return pipe(
-        (ios | _inouts(f)) -
-        (_targets(f) |
-         pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
-        map(ns.get_name),
-        flip(concatv, pipe(f, _get_clock_domains, map(attrgetter("name")),
-                           map(_r_name))),
-        tuple)
+    ios = pipe((ios | _inouts(f)) -
+               (_targets(f) |
+                pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
+               map(ns.get_name))
+    regs = pipe(f, _cd_regs, map(first), map(_r_name))
+    return concatv(ios, regs)
 
 _indent = mul("    ")
 _AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL = range(3)
@@ -163,8 +162,13 @@ def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
         return "({})".format(node.value) if node.value < 0 \
             else "{}".format(node.value)
     elif thint == _THint.logic:
-        if len(node) == 1 and not lhint:
-            return "'{}'".format(node.value)
+        if len(node) == 1:
+            if not lhint or lhint == 1:
+                return "'{}'".format(node.value)
+            elif node.value == 0:
+                return "(others => '0')"
+            elif node.value == 1:
+                return "(0 => '1', others => '0')"
         elif node.value == 0:
             return "(others => '0')"
         elif node.value == 2 ** len(node) - 1:
@@ -190,7 +194,8 @@ def _printexpr_signal(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             ".".join([_v_name(cd[0]) if lhs else _r_name(cd[0]),
                       ns.get_name(node)])
     if len(node) == 1:
-        casted = _unsigned(" & ".join(["\"\"", identifier]))
+        casted = _unsigned(_fn_call("std_logic_vector'",
+                                    " & ".join(["\"\"", identifier])))
     else:
         casted = _signed(identifier) if node.signed else _unsigned(identifier)
     if thint == _THint.boolean:
@@ -268,7 +273,7 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             if thint == _THint.un_signed:
                 return expr
             elif thint == _THint.integer:
-                return _to_integer("to_integer", expr)
+                return _to_integer(expr)
             elif thint == _THint.logic:
                 return _std_logic_vector(expr)
             else:
@@ -342,6 +347,7 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                 return expr
 
     raise TypeError("unkown operator: {}, arity: {}".format(node, arity))
+
 
 
 @singledispatch
@@ -419,13 +425,55 @@ def _printnode_none(node, f, ns, at, level, buffer_variables, thint, lhint):
 
 @_printnode.register(_Assign)
 def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
+    if isinstance(node.l, Cat):
+        return pipe(
+            node.l.l,
+            reversed,
+            map(juxt([identity, len])),
+            list,
+            juxt([identity, comp(sum, map(second))]),
+            juxt([first,
+                  comp(apply(partial(accumulate, operator.sub)),
+                       juxt([comp(map(second), first),
+                             second]))]),
+            apply(zip),
+            map(lambda x: _printnode(
+                x[0][0].eq(node.r[x[1] - x[0][1]: x[1]]),
+                f, ns, at, level, buffer_variables, thint, lhint)),
+            ";\n".join)
+
     lhs = _printexpr(node.l, f, ns, at, True, buffer_variables, _THint.logic,
                      None)
     rhs = _printexpr(node.r, f, ns, at, False, buffer_variables, _THint.logic,
-                     "{}'length".format(lhs) if len(node.l) > 1 else None)
+                     len(node.l) if isinstance(node.r, Constant)
+                     or len(node.l) > len(node.r) else None)
 
     return "{}{} {} {}".format(_indent(level), lhs,
                                ":=" if at == _AT_BLOCKING else "<=", rhs)
+
+@singledispatch
+def _printgeneric(param, ns):
+    from migen.fhdl.specials import Instance
+
+    if isinstance(param, Instance.PreformattedParam):
+        return param
+
+    raise NotImplementedError("{} not implemented".format(type(param)))
+
+
+@_printgeneric.register(Constant)
+def _printgeneric_constant(param, ns):
+    return _printexpr(param, Fragment(), ns, None, None, None, None)
+
+
+@_printgeneric.register(float)
+def _printgeneric_float(param, ns):
+    return "{}".format(param)
+
+
+@_printgeneric.register(str)
+def _printgeneric_str(param, ns):
+    return "\"{}\"".format(param)
 
 
 _architecturetemplate = Template(
@@ -469,35 +517,45 @@ variable ${_v_name(ns.get_name(v))}: ${_get_sigtype(v)};
 % endfor
 
 begin
--- defaults
 % for cd in map(first, cd_regs):
+% if loop.first:
+-- defaults
+% endif
 ${_indent(1)}${_v_name(cd)} := ${_r_name(cd)};
 % endfor
--- comb statements
 % for statement in comb_statements:
+% if loop.first:
+-- comb statements
+% endif
 ${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
 % endfor
 % for statement in filter(comp(contains(buffer_variables), attrgetter("l")),\
     assignments):
 ${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
 % endfor
--- sync statements
-% if len(sync_statements):
 % for statement in map(second, sync_statements):
+% if loop.first:
+-- sync statements
+% endif
 ${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
 % endfor
-% endif
--- drive register input
 % for cd in map(first, cd_regs):
+% if loop.first:
+-- drive register input
+% endif
 ${_indent(1)}${_rin_name(cd)} <= ${_v_name(cd)};
 % endfor
--- drive outputs
 % for v in buffer_variables:
+% if loop.first:
+-- drive outputs
+% endif
 ${_indent(1)}${pipe(v, ns.get_name, juxt([identity, _v_name]), " <= ".join)};
 % endfor
 % for cd in cd_regs:
--- drive "${cd[0]}" regs
 % for sig in pipe(cd, second, filter(contains(ios))):
+% if loop.first:
+-- drive "${cd[0]}" regs
+% endif
 ${_indent(1)}${pipe(sig, ns.get_name,
     juxt([identity,
           comp(".".join, juxt([lambda _: _r_name(cd[0]), identity]))]),
@@ -513,6 +571,10 @@ ${_indent(1)}if rising_edge(${ns.get_name(cd.clk)}) then
 ${_indent(2)}${_r_name(cd.name)} <= ${_rin_name(cd.name)};
 ${_indent(1)}end if;
 end process;
+
+% endfor
+% for special in specials:
+${str(special)}
 % endfor
 end architecture ${_architecture_id(name)};\
 """)
@@ -523,13 +585,13 @@ def _variables(f, ios):
         reduce(sub)) - ios, key=hash)
 
 
-def _printarchitecture(f, ios, name, ns):
+def _printarchitecture(f, ios, name, ns, overrides, specials):
     return _architecturetemplate.render(
         name=name,
         ns=ns,
         f=f,
         ios=ios,
-        sensitivity_list=_sensitivity_list(f, ns, ios),
+        sensitivity_list=list(_sensitivity_list(f, ns, ios)),
         cd_regs=pipe(f, _cd_regs, list),
         variables=_variables(f, ios),
         buffer_variables=sorted(
@@ -539,11 +601,20 @@ def _printarchitecture(f, ios, name, ns):
             pipe(f, juxt([_targets, comp(set, concat, map(second), _cd_regs)]),
                  reduce(sub)) - set(_variables(f, ios)), key=hash),
         groups=group_by_targets(f.comb),
-        assignments=pipe(f, _assignments, list),
-        sync_statements=pipe(f, _sorted_sync, list),
-        comb_statements=pipe(f, _comb_statements, list),
+        assignments=pipe(f, _assignments),
+        sync_statements=pipe(f, _sorted_sync),
+        comb_statements=pipe(f, _comb_statements),
         cds=pipe(f, _get_clock_domains,
-                 partial(sorted, key=attrgetter("name"))))
+                 partial(sorted, key=attrgetter("name")),
+                 filter(partial(operator.contains,
+                                pipe(f, _cd_regs, map(first))))),
+        specials=pipe(
+            specials,
+            partial(sorted, key=hash),
+            map(partial(call_special_classmethod, overrides,
+                        method="emit_vhdl",
+                        ns=ns,
+                        add_data_file=None))))
 
 
 def convert(f, ios=None, name="top",
@@ -581,6 +652,7 @@ def convert(f, ios=None, name="top",
     r.ns = ns
     r.set_main_source("".join([
         _printentity(f, ios, name, ns),
-        _printarchitecture(f, ios, name, ns)]))
+        _printarchitecture(f, ios, name, ns, special_overrides,
+                           f.specials - lowered_specials)]))
 
     return r

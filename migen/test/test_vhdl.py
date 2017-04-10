@@ -24,7 +24,9 @@ class NameSpace():
      ((Constant(1), None, NameSpace(), None, None, None, _THint.logic, None),
       "'1'"),
      ((Constant(0), None, NameSpace(), None, None, None, _THint.logic, 32),
-      "(others => '0')")])
+      "(others => '0')"),
+     ((Constant(1), None, NameSpace(), None, None, None, _THint.logic, 32),
+      "(0 => '1', others => '0')")])
 def test_printexpr_should_handle_constant(args, expected):
      assert _printexpr(*args) == expected
 

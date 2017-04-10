@@ -1,7 +1,8 @@
 import subprocess
-
+from os import path
+import tempfile
 from migen import *  # noqa
-from migen.fhdl.verilog import convert
+from migen.fhdl import vhdl
 
 
 # Create a parent module with two instances of a child module.
@@ -56,13 +57,15 @@ class ChildModule(Module):
 # icarus for a syntax check
 def test_instance_module():
     sub = ChildModule()
-    convert(sub, sub.io, name="ChildModule").write("ChildModule.v")
+    sub_fname = path.join(tempfile.gettempdir(), "child_module.vhd")
+    vhdl.convert(sub, sub.io, name="ChildModule").write(sub_fname)
 
     im = ParentModule()
-    convert(im, im.io, name="ParentModule").write("ParentModule.v")
+    im_fname = path.join(tempfile.gettempdir(), "parent_module.vhd")
+    vhdl.convert(im, im.io, name="ParentModule").write(im_fname)
 
-    subprocess.check_call(["iverilog", "-W", "all",
-                           "ParentModule.v", "ChildModule.v"])
+    subprocess.check_call(["nvc", "--syntax", sub_fname, im_fname])
+    subprocess.check_call(["nvc", "-a", sub_fname, im_fname])
 
 if __name__ == "__main__":
     test_instance_module()

@@ -1,5 +1,8 @@
+import subprocess
+from os import path
+import tempfile
 from migen import *  # noqa
-from migen.fhdl import verilog
+from migen.fhdl import vhdl
 from migen.genlib.divider import Divider
 
 
@@ -15,5 +18,8 @@ class MultiMod(Module):
         self.submodules.bar = CDM()
 
 if __name__ == "__main__":
+    fname = path.join(tempfile.gettempdir(), "local_cd.vhd")
     mm = MultiMod()
-    print(verilog.convert(mm, {mm.foo.cd_sys.clk, mm.bar.cd_sys.clk}))
+    vhdl.convert(mm, {mm.foo.cd_sys.clk, mm.bar.cd_sys.clk}).write(fname)
+    subprocess.check_call(["nvc", "--syntax", fname])
+    subprocess.check_call(["nvc", "-a", fname])

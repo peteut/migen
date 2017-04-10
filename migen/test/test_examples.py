@@ -34,16 +34,16 @@ class TestExamplesBasic(unittest.TestCase):
     pass
 
 for name in ("arrays",
-              "fsm",
-              "graycounter",
-              "local_cd",
-              "memory",
-              "namer",
-              "psync",
-              "record",
-              "reslice",
-              "tristate",
-              "two_dividers"):
+             "fsm",
+             "graycounter",
+             "local_cd",
+             "memory",
+             "namer",
+             "psync",
+             "record",
+             "reslice",
+             "tristate",
+             "two_dividers"):
     setattr(TestExamplesBasic, "test_" + name,
             _make_test_method(name, "basic"))
 

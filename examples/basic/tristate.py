@@ -1,5 +1,8 @@
+import subprocess
+from os import path
+import tempfile
 from migen import *  # noqa
-from migen.fhdl import verilog
+from migen.fhdl import vhdl
 
 
 class Example(Module):
@@ -10,4 +13,7 @@ class Example(Module):
 
 if __name__ == "__main__":
     e = Example()
-    print(verilog.convert(e, ios={e.pad, e.t.o, e.t.oe, e.t.i}))
+    fname = path.join(tempfile.gettempdir(), "tristate.vhd")
+    vhdl.convert(e, ios={e.pad, e.t.o, e.t.oe, e.t.i}).write(fname)
+    subprocess.check_call(["nvc", "--syntax", fname])
+    subprocess.check_call(["nvc", "-a", fname])

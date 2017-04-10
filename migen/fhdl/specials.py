@@ -1,6 +1,7 @@
 from operator import itemgetter
 
 from mako.template import Template
+from toolz.curried import *  # noqa
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Value
@@ -12,6 +13,9 @@ from migen.fhdl.verilog import _printexpr as verilog_printexpr
 
 __all__ = ["TSTriple", "Instance", "Memory",
     "READ_FIRST", "WRITE_FIRST", "NO_CHANGE"]
+
+
+_isinstance = flip(isinstance)
 
 
 class Special:
@@ -211,6 +215,41 @@ class Instance(Special):
             r += ");\n\n"
         return r
 
+    @staticmethod
+    def emit_vhdl(instance, ns, add_data_file):
+        instancetemplate = Template(
+"""\
+<%!
+from migen.fhdl.vhdl import (_indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING,
+            _printgeneric)
+%>\
+<%
+printexpr = partial(_printexpr, ns=ns, f=_Fragment(), at=_AT_NONBLOCKING,
+            lhs=None, buffer_variables=None, thint=None, lhint=None)
+printgeneric = partial(_printgeneric, ns=ns)
+%>\
+${ns.get_name(instance)}: entity work.${instance.of}
+% for generic in generics:
+${"generic map (" if bool(loop.first) else " " * 13}\
+${generic.name} => ${printgeneric(generic.value)}\
+${"," if not bool(loop.last) else ")"}
+% endfor
+% for port in ports:
+${"port map (" if bool(loop.first) else " " * 10}\
+${port.name} => ${printexpr(port.expr)}\
+${"," if not bool(loop.last) else ");"}
+% endfor
+""")
+        return instancetemplate.render(
+            instance=instance,
+            ns=ns,
+            ports=pipe(instance.items,
+                       filter(_isinstance(Instance._IO)),
+                       list),
+            generics=pipe(instance.items,
+                          filter(_isinstance(Instance.Parameter)),
+                          do(map(print)),
+                          list))
 
 (READ_FIRST, WRITE_FIRST, NO_CHANGE) = range(3)
 
