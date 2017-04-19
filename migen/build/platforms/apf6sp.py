@@ -19,9 +19,9 @@ _io = [("pcie_x1", 0,
         Subsignal("n", Pins("U4"), IOStandard("1.5-V PCML"))),
 
        ("ddram", 0,
-        Subsignal("a", Pins("C11 B11 A8 A7 " +
-                            "D11 E11 F8 E7 " +
-                            "D9 D8 B6 B5 C8 " +
+        Subsignal("a", Pins("C11 B11 A8 A7 "
+                            "D11 E11 F8 E7 "
+                            "D9 D8 B6 B5 C8 "
                             "B8 H6"), IOStandard("SSTL-135")),
 
         Subsignal("ba", Pins("C6 C10 C9"), IOStandard("SSTL-135")),
@@ -31,12 +31,12 @@ _io = [("pcie_x1", 0,
         Subsignal("cs_n", Pins("H8"), IOStandard("SSTL-135")),
         Subsignal("we_n", Pins("E6"), IOStandard("SSTL-135")),
 
-        Subsignal("dm", Pins("A15 C19 C21 F12 " +
-                             "E12 B12 B13 C13 " +
-                             "D13 C14 A14 E14 " +
-                             "F15 B18 A17 C15 " +
-                             "C16 B16 C18 D17 " +
-                             "E16 A20 A22 E17 " +
+        Subsignal("dm", Pins("A15 C19 C21 F12 "
+                             "E12 B12 B13 C13 "
+                             "D13 C14 A14 E14 "
+                             "F15 B18 A17 C15 "
+                             "C16 B16 C18 D17 "
+                             "E16 A20 A22 E17 "
                              "D18 B20 C20"), IOStandard("SSTL-135")),
 
         Subsignal("dqs_n",
@@ -159,8 +159,8 @@ class Platform(AlteraPlatform):
     default_clk_name = "pcie_clk"
     default_clk_period = 8
 
-    def __init__(self, toolchain="quartus"):
-        AlteraPlatform.__init__(self, "5CGXFC4C7U19C8", _io, _connector)
+    def __init__(self, toolchain="quartus", **kwargs):
+        super().__init__("5CGXFC4C7U19C8", _io, _connector, **kwargs)
 
 
 class PciePllClockedModule(Module):

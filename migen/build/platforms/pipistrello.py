@@ -125,8 +125,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk50"
     default_clk_period = 20
 
-    def __init__(self):
-        super().__init__("xc6slx45-csg324-3", _io, _connectors)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx45-csg324-3", _io, _connectors, **kwargs)
         self.toolchain.bitgen_opt += " -g Compress -g ConfigRate:6"
 
     def create_programmer(self):

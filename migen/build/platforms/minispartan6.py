@@ -113,9 +113,9 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk32"
     default_clk_period = 31.25
 
-    def __init__(self, device="xc6slx9", programmer="xc3sprog"):
+    def __init__(self, device="xc6slx9", programmer="xc3sprog", **kwargs):
         self.programmer = programmer
-        super().__init__(device + "-3-ftg256", _io, _connectors)
+        super().__init__(device + "-3-ftg256", _io, _connectors, **kwargs)
 
     def create_programmer(self):
         if self.programmer == "xc3sprog":

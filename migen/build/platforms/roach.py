@@ -31,5 +31,5 @@ _io = [
 
 
 class Platform(XilinxPlatform):
-    def __init__(self):
-        super().__init__("xc5vsx95t-ff1136-1", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc5vsx95t-ff1136-1", _io, **kwargs)

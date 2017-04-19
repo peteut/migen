@@ -173,5 +173,5 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk3"
     default_clk_period = 10.526
 
-    def __init__(self):
-        super().__init__("xc6slx9-2csg225", _ios, _connectors)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx9-2csg225", _ios, _connectors, **kwargs)

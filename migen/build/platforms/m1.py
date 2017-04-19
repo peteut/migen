@@ -123,8 +123,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk50"
     default_clk_period = 20
 
-    def __init__(self):
-        XilinxPlatform.__init__(self, "xc6slx45-fgg484-2", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx45-fgg484-2", _io, **kwargs)
 
     def create_programmer(self):
         return UrJTAG(cable="milkymist", flash_proxy_basename="fjmem-m1.bit")

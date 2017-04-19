@@ -86,8 +86,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk_if"
     default_clk_period = 20
 
-    def __init__(self):
-        super().__init__("xc6slx150-3csg484", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx150-3csg484", _io, **kwargs)
         self.add_platform_command("""
 CONFIG VCCAUX = "2.5";
 """)

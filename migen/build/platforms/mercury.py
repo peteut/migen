@@ -124,8 +124,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk50"
     default_clk_period = 20
 
-    def __init__(self, device="xc3s200a-4-vq100"):
-        super().__init__(device, _io, _connectors)
+    def __init__(self, device="xc3s200a-4-vq100", **kwargs):
+        super().__init__(device, _io, _connectors, **kwargs)
         # Small device- optimize for AREA instead of SPEED (LM32 runs at about
         # 60-65MHz in AREA configuration).
         self.toolchain.xst_opt = """-ifmt MIXED

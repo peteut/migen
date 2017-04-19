@@ -117,8 +117,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk64"
     default_clk_period = 15.625
 
-    def __init__(self):
-        super().__init__("xc3s1400a-ft256-4", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc3s1400a-ft256-4", _io, **kwargs)
         self.toolchain.bitgen_opt = "-g LCK_cycle:6 -g Binary:Yes -w -g UnusedPin:PullUp"
 
     def do_finalize(self, fragment):

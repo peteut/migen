@@ -117,8 +117,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk100"
     default_clk_period = 10
 
-    def __init__(self):
-        super().__init__("xc6slx9-csg324-2", _io, _connectors)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx9-csg324-2", _io, _connectors, **kwargs)
 
     def create_programmer(self):
         raise NotImplementedError

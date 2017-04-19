@@ -56,5 +56,5 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk200"
     default_clk_period = 5
 
-    def __init__(self):
-        super().__init__("xc6vlx240t-ff1156-1", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc6vlx240t-ff1156-1", _io, **kwargs)

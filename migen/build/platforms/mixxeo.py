@@ -159,8 +159,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk50"
     default_clk_period = 20
 
-    def __init__(self):
-        super().__init__("xc6slx45-fgg484-2", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx45-fgg484-2", _io, **kwargs)
         self.add_platform_command("CONFIG VCCAUX=\"3.3\";\n")
 
     def create_programmer(self):

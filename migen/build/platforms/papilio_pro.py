@@ -54,8 +54,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk32"
     default_clk_period = 31.25
 
-    def __init__(self):
-        super().__init__("xc6slx9-tqg144-2", _io, _connectors)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx9-tqg144-2", _io, _connectors, **kwargs)
 
     def create_programmer(self):
         return XC3SProg("papilio", "bscan_spi_lx9_papilio.bit")

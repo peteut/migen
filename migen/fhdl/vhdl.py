@@ -619,6 +619,7 @@ def _printarchitecture(f, ios, name, ns, overrides, specials):
 
 def convert(f, ios=None, name="top",
             special_overrides=dict(),
+            attr_translate=None,
             create_clock_domains=True,
             display_run=False,
             asic_syntax=False):

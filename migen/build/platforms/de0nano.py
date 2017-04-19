@@ -96,8 +96,8 @@ class Platform(AlteraPlatform):
     default_clk_name = "clk50"
     default_clk_period = 20
 
-    def __init__(self):
-        super().__init__("EP4CE22F17C6", _io)
+    def __init__(self, **kwargs):
+        super().__init__("EP4CE22F17C6", _io, **kwargs)
 
     def create_programmer(self):
         return USBBlaster()

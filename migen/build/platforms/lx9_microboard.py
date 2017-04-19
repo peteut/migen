@@ -106,8 +106,8 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk_y3"
     default_clk_period = 10
 
-    def __init__(self):
-        super().__init__("xc6slx9-2csg324", _io)
+    def __init__(self, **kwargs):
+        super().__init__("xc6slx9-2csg324", _io, **kwargs)
         self.add_platform_command("""
 CONFIG VCCAUX = "3.3";
 """)

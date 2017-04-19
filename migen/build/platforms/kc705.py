@@ -472,9 +472,9 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk156"
     default_clk_period = 6.4
 
-    def __init__(self, toolchain="vivado", programmer="xc3sprog"):
+    def __init__(self, toolchain="vivado", programmer="xc3sprog", **kwargs):
         super().__init__("xc7k325t-ffg900-2", _io, _connectors,
-                         toolchain=toolchain)
+                         toolchain=toolchain, **kwargs)
         if toolchain == "ise":
             self.toolchain.bitgen_opt = "-g LCK_cycle:6 -g Binary:Yes -w -g ConfigRate:12 -g SPI_buswidth:4"
         elif toolchain == "vivado":
