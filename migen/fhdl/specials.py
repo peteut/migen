@@ -18,9 +18,9 @@ __all__ = ["TSTriple", "Instance", "Memory",
 _isinstance = flip(isinstance)
 
 
-class Special:
+class Special(DUID):
     def __init__(self):
-        self._duid = next(duid)
+        super().__init__()
 
     def iter_expressions(self):
         for x in []:

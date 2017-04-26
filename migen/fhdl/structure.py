@@ -6,10 +6,23 @@ import re as _re
 from migen.fhdl import tracer as _tracer
 from migen.util.misc import flat_iteration as _flat_iteration
 
-duid = itertools.count(0)
+
+__all__ = [
+    "DUID", "wrap", "Mux", "Cat", "Replicate", "Constant", "C", "Signal",
+    "ClockSignal", "ResetSignal", "If", "Case", "Array", "ClockDomain",
+    "SPECIAL_INPUT", "SPECIAL_OUTPUT", "SPECIAL_INOUT"]
 
 
-class _Value:
+class DUID:
+    """Deterministic Unique IDentifier"""
+    __duid = itertools.count(0)
+
+    def __init__(self):
+        self._duid = next(DUID.__duid)
+
+
+
+class _Value(DUID):
     """Base class for operands
 
     Instances of `_Value` or its subclasses can be operands to
@@ -314,7 +327,6 @@ class Signal(_Value):
         from migen.fhdl.bitcontainer import bits_for
 
         super().__init__()
-        self._duid = next(duid)
 
         for n in [name, name_override]:
             if n is not None and not self._name_re.match(n):
