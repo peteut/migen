@@ -178,8 +178,9 @@ def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
                 _fn_call("to_signed" if node.signed else "to_unsigned",
                          node.value, lhint or len(node)))
     else:
-        return _fn_call("to_signed" if node.signed else "to_unsigned",
-                        node.value, lhint or len(node))
+        return "'{}'".format(node.value) if len(node) == 1 \
+            else _fn_call("to_signed" if node.signed else "to_unsigned",
+                     node.value, lhint or len(node))
 
 
 @_printexpr.register(Signal)
@@ -463,7 +464,7 @@ def _printgeneric(param, ns):
 
 @_printgeneric.register(Constant)
 def _printgeneric_constant(param, ns):
-    return _printexpr(param, Fragment(), ns, None, None, None, None)
+    return "{}".format(param.value)
 
 
 @_printgeneric.register(float)
