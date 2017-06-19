@@ -1,11 +1,13 @@
 """
 Clock domain crossing module
 """
+from math import gcd
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.module import Module
 from migen.fhdl.specials import Special, Memory
 from migen.fhdl.bitcontainer import value_bits_sign
+from migen.fhdl.decorators import ClockDomainsRenamer
 from migen.genlib.misc import WaitTimer
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
@@ -98,7 +100,8 @@ class BusSynchronizer(Module):
             sync_i += starter.eq(0)
             self.submodules._ping = PulseSynchronizer(idomain, odomain)
             self.submodules._pong = PulseSynchronizer(odomain, idomain)
-            self.submodules._timeout = WaitTimer(timeout)
+            self.submodules._timeout = ClockDomainsRenamer(idomain)(
+                WaitTimer(timeout))
             self.comb += [
                 self._timeout.wait.eq(~self._ping.i),
                 self._ping.i.eq(starter | self._pong.o | self._timeout.done),
@@ -193,3 +196,59 @@ class ElasticBuffer(Module):
             rdport.adr.eq(rdpointer),
             self.dout.eq(rdport.dat_r)
         ]
+
+
+def lcm(a, b):
+    """Compute the lowest common multiple of a and b"""
+    return (a*b)//gcd(a, b)
+
+
+class Gearbox(Module):
+    def __init__(self, iwidth, idomain, owidth, odomain):
+        self.i = Signal(iwidth)
+        self.o = Signal(owidth)
+
+        # # #
+
+        reset = Signal()
+        cd_write = ClockDomain()
+        cd_read = ClockDomain()
+        self.comb += [
+            cd_write.clk.eq(ClockSignal(idomain)),
+            cd_read.clk.eq(ClockSignal(odomain)),
+            reset.eq(ResetSignal(idomain) | ResetSignal(odomain))
+        ]
+        self.specials += [
+            AsyncResetSynchronizer(cd_write, reset),
+            AsyncResetSynchronizer(cd_read, reset)
+        ]
+        self.clock_domains += cd_write, cd_read
+
+        storage = Signal(2*lcm(iwidth, owidth))
+        wrchunks = len(storage)//iwidth
+        rdchunks = len(storage)//owidth
+        wrpointer = Signal(max=wrchunks, reset=0 if iwidth > owidth else wrchunks//2)
+        rdpointer = Signal(max=rdchunks, reset=rdchunks//2 if iwidth > owidth else 0)
+
+        self.sync.write += \
+            If(wrpointer == wrchunks-1,
+                wrpointer.eq(0)
+            ).Else(
+                wrpointer.eq(wrpointer + 1)
+            )
+        cases = {}
+        for i in range(wrchunks):
+            cases[i] = [storage[iwidth*i:iwidth*(i+1)].eq(self.i)]
+        self.sync.write += Case(wrpointer, cases)
+
+
+        self.sync.read += \
+            If(rdpointer == rdchunks-1,
+                rdpointer.eq(0)
+            ).Else(
+                rdpointer.eq(rdpointer + 1)
+            )
+        cases = {}
+        for i in range(rdchunks):
+            cases[i] = [self.o.eq(storage[owidth*i:owidth*(i+1)])]
+        self.sync.read += Case(rdpointer, cases)

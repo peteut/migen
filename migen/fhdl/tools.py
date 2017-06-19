@@ -143,11 +143,12 @@ def is_variable(node):
 
 def generate_reset(rst, sl):
     targets = list_targets(sl)
-    return [t.eq(t.reset) for t in sorted(targets, key=hash)]
+    return [t.eq(t.reset) for t in sorted(targets, key=hash)
+            if not t.reset_less]
 
 
 def insert_reset(rst, sl):
-    return [If(rst, *generate_reset(rst, sl)).Else(*sl)]
+    return sl + [If(rst, *generate_reset(rst, sl))]
 
 
 def insert_resets(f):

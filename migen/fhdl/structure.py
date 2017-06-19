@@ -309,6 +309,10 @@ class Signal(_Value):
         given value. When this `Signal` is unassigned in combinatorial
         context (due to conditional assignments not being taken),
         the `Signal` assumes its `reset` value. Defaults to 0.
+    reset_less : bool
+        If `True`, do not generate reset logic for this `Signal` in
+        synchronous statements. The `reset` value is only used as a
+        combinatorial default or as the initial value. Defaults to `False`.
     name_override : str or None
         Do not use the inferred name but the given one.
     min : int or None
@@ -322,8 +326,8 @@ class Signal(_Value):
     _name_re = _re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
     def __init__(self, bits_sign=None, name=None, variable=False, reset=0,
-                 name_override=None, min=None, max=None, related=None,
-                 attr=None):
+                 reset_less=False, name_override=None, min=None, max=None,
+                 related=None, attr=None):
         from migen.fhdl.bitcontainer import bits_for
 
         super().__init__()
@@ -358,6 +362,7 @@ class Signal(_Value):
 
         self.variable = variable  # deprecated
         self.reset = reset
+        self.reset_less = reset_less
         self.name_override = name_override
         self.backtrace = _tracer.trace_back(name)
         self.related = related
@@ -366,7 +371,7 @@ class Signal(_Value):
     def __setattr__(self, k, v):
         if k == "reset":
             v = wrap(v)
-        _Value.__setattr__(self, k, v)
+        super().__setattr__(k, v)
 
     def __repr__(self):
         return "<Signal " + (self.backtrace[-1][0] or "anonymous") + " at " + hex(id(self)) + ">"
@@ -587,7 +592,7 @@ class Case(_Statement):
 
 class _ArrayProxy(_Value):
     def __init__(self, choices, key):
-        _Value.__init__(self)
+        super().__init__()
         self.choices = []
         for c in choices:
             if isinstance(c, (bool, int)):
@@ -635,11 +640,11 @@ class Array(list):
     """
     def __getitem__(self, key):
         if isinstance(key, Constant):
-            return list.__getitem__(self, key.value)
+            return super().__getitem__(key.value)
         elif isinstance(key, _Value):
             return _ArrayProxy(self, key)
         else:
-            return list.__getitem__(self, key)
+            return super().__getitem__(key)
 
 
 class ClockDomain:
@@ -701,6 +706,15 @@ class _ClockDomainList(list):
             raise KeyError(key)
         else:
             return super().__getitem__(key)
+
+    def __contains__(self, cd_or_name):
+        if isinstance(cd_or_name, str):
+            for cd in self:
+                if cd.name == cd_or_name:
+                    return True
+            return False
+        else:
+            return super().__contains__(cd_or_name)
 
 
 SPECIAL_INPUT, SPECIAL_OUTPUT, SPECIAL_INOUT = range(3)
