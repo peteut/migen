@@ -224,7 +224,8 @@ class Instance(Special):
         instancetemplate = Template(
 """\
 <%!
-from migen.fhdl.vhdl import (_indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING,
+from migen.fhdl.vhdl import (
+            _indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING,
             _printgeneric)
 %>\
 <%
@@ -239,9 +240,9 @@ ${generic.name} => ${printgeneric(generic.value)}\
 ${"," if not bool(loop.last) else ")"}
 % endfor
 % for port in ports:
-${"port map (" if bool(loop.first) else " " * 10}\
+${"port map (" if loop.first else " " * 10}\
 ${port.name} => ${printexpr(port.expr)}\
-${"," if not bool(loop.last) else ");"}
+${"," if not loop.last else ");"}
 % endfor
 """)
         return instancetemplate.render(
@@ -252,7 +253,6 @@ ${"," if not bool(loop.last) else ");"}
                        list),
             generics=pipe(instance.items,
                           filter(_isinstance(Instance.Parameter)),
-                          do(map(print)),
                           list))
 
 (READ_FIRST, WRITE_FIRST, NO_CHANGE) = range(3)
@@ -285,6 +285,10 @@ class _MemoryPort(Special):
 
     @staticmethod
     def emit_verilog(port, ns, add_data_file):
+        return ""  # done by parent Memory object
+
+    @staticmethod
+    def emit_vhdl(port, ns, add_data_file):
         return ""  # done by parent Memory object
 
 

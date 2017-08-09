@@ -1,12 +1,9 @@
-from collections import Iterable, Hashable
-import operator
+from collections import Iterable
 try:
     from functools import singledispatch
 except ImportError:
     from multimethods import singledispatch
 from enum import Enum
-
-from migen.fhdl.structure import *  # noqa
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Operator,_Slice, _Assign, _Fragment
@@ -23,7 +20,6 @@ from operator import (is_, and_, or_, and_, attrgetter, sub,
 
 is_, and_, mul, sub, contains = map(curry, [is_, and_, mul, sub, contains])
 
-_isinstance = flip(isinstance)
 
 __all__ = ["convert"]
 
@@ -51,6 +47,8 @@ def _get_sigtype(s):
     return ("std_ulogic" if len(s) is 1
             else "std_logic_vector({} downto 0)".format(len(s) - 1))
 
+_sort_by_hash = partial(sorted, key=hash)
+
 _entitytemplate = Template(
 """\
 <%!
@@ -76,60 +74,73 @@ ${_direction(sig)} ${_get_sigtype(sig)}${")" * bool(loop.last)};
 end entity ${name};
 """)
 
-@curry
-def apply(fn, args):
-    return fn(*args)
+_sigs = comp(
+    reduce(or_),
+    juxt([
+        list_signals,
+        partial(list_special_ios, ins=True, outs=True, inouts=True)]))
 
+_inouts = partial(list_special_ios, ins=False, outs=False, inouts=True)
 
-_sigs = comp(reduce(or_),
-             juxt([list_signals,
-                   comp(apply(list_special_ios),
-                        flip(cons, [True, True, True]))]))
-_inouts = comp(apply(list_special_ios), flip(cons, [False, False, True]))
-_targets = comp(reduce(or_),
-                juxt([list_targets,
-                      comp(apply(list_special_ios),
-                           flip(cons, [False, True, True]))]))
+_targets = comp(
+    reduce(or_),
+    juxt([
+        list_targets,
+        partial(list_special_ios, ins=False, outs=True, inouts=True)]))
 
 
 def _printentity(f, ios, name, ns):
     return _entitytemplate.render(
-        name=name, sigs=_sigs(f), inouts=_inouts(f),
+        name=name, inouts=_inouts(f),
         targets=_targets(f), ns=ns, ios=sorted(ios, key=hash))
 
 _get_comb, _get_sync, _get_clock_domains = map(
     attrgetter, ["comb", "sync", "clock_domains"])
+
 _reg_typename = "{}_reg_t".format
+
 _rin_name = "{}_rin".format
+
 _r_name = "{}_r".format
+
 _v_name = "{}_v".format
+
 _sorted_sync = comp(concatv, partial(sorted, key=get(0)), iteritems, _get_sync)
+
 _cd_regs = comp(
-    map(juxt(
-    [first,
-     comp(list, filter(complement(is_variable)),
-          filter(comp(_isinstance(Signal))), list_targets, second)])),
+    map(juxt([
+        first,
+        comp(list, filter(complement(is_variable)),
+             filter(comp(flip(isinstance)(Signal))), list_targets, second)])),
     _sorted_sync)
+
 _assignment_filter_fn = comp(
-    reduce(and_), juxt([comp(is_(1), len, first),
-                        comp(_isinstance(_Assign), get_in([1, 0]))]))
-_assignments = comp(pluck(0), pluck(1), filter(_assignment_filter_fn),
-                    concatv, group_by_targets, _get_comb)
+    reduce(and_),juxt([
+        comp(is_(1), len, first),
+        comp(flip(isinstance)(_Assign), get_in([1, 0]))]))
+
 _comb = comp(concatv, group_by_targets, _get_comb)
+
+_assignments = comp(map(get_in([1, 0])), filter(_assignment_filter_fn), _comb)
+
 _comb_statements = comp(pluck(1), _comb)
+
 # _comb_sigs = comp(concat, pluck(0), _comb)
 
 
 def _sensitivity_list(f, ns, ios):
-    ios = pipe((ios | _inouts(f)) -
-               (_targets(f) |
-                pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
-               map(ns.get_name))
+    ios = pipe(
+        (ios | _inouts(f))
+        - (_targets(f) |
+           pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
+        map(ns.get_name))
     regs = pipe(f, _cd_regs, map(first), map(_r_name))
     return concatv(ios, regs)
 
 _indent = mul("    ")
+
 _AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL = range(3)
+
 _THint = Enum("THint", "boolean logic un_signed  integer")
 
 
@@ -159,16 +170,14 @@ _unsigned, _signed, _std_logic_vector, _to_integer = map(
 @_printexpr.register(Constant)
 def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     if thint == _THint.integer:
-        return "({})".format(node.value) if node.value < 0 \
-            else "{}".format(node.value)
+        return "({})".format(node.value) if node.value < 0 else \
+            "{}".format(node.value)
     elif thint == _THint.logic:
         if len(node) == 1:
             if not lhint or lhint == 1:
                 return "'{}'".format(node.value)
-            elif node.value == 0:
-                return "(others => '0')"
-            elif node.value == 1:
-                return "(0 => '1', others => '0')"
+            return "(others => '0')" if node.value == 0 else \
+                "(0 => '1', others => '0')"
         elif node.value == 0:
             return "(others => '0')"
         elif node.value == 2 ** len(node) - 1:
@@ -180,7 +189,7 @@ def _printexpr_constant(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     else:
         return "'{}'".format(node.value) if len(node) == 1 \
             else _fn_call("to_signed" if node.signed else "to_unsigned",
-                     node.value, lhint or len(node))
+                          node.value, lhint or len(node))
 
 
 @_printexpr.register(Signal)
@@ -252,14 +261,22 @@ def _is_op_cmp(node):
 
 
 _bitwise_op_map = {"~": "not", "&": "and", "|": "or", "^": "xor"}
+
 _arith_op_map = {"+": "+", "-": "-", "*": "*", "/": "/", "%": "rem"}
+
 _is_arith_op = comp(contains(_arith_op_map.keys()), attrgetter("op"))
+
 _comp_map = {"==": "=", "!=": "/=", "<": "<", "<=": "<=", ">": ">", ">=": ">="}
+
 _is_bitwise_op = comp(contains(_bitwise_op_map.keys()), attrgetter("op"))
+
 _is_comp_op = comp(contains(_comp_map.keys()), attrgetter("op"))
+
 _get_op = comp(flip(get, merge(_bitwise_op_map, _arith_op_map, _comp_map)),
                attrgetter("op"))
+
 _shift_op = {"<<<": "shift_left", ">>>": "shift_right"}
+
 _is_shift_op = comp(contains(_shift_op.keys()), attrgetter("op"))
 
 
@@ -434,10 +451,10 @@ def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
             list,
             juxt([identity, comp(sum, map(second))]),
             juxt([first,
-                  comp(apply(partial(accumulate, operator.sub)),
+                  comp(reduce(partial(accumulate, sub)),
                        juxt([comp(map(second), first),
                              second]))]),
-            apply(zip),
+            reduce(zip),
             map(lambda x: _printnode(
                 x[0][0].eq(node.r[x[1] - x[0][1]: x[1]]),
                 f, ns, at, level, buffer_variables, thint, lhint)),
@@ -500,6 +517,12 @@ signal ${_rin_name(cd)}: ${_reg_typename(cd)}; -- register input for cd "${cd}"
 signal ${_r_name(cd)}: ${_reg_typename(cd)}; -- register for cd "${cd}"
 
 % endfor
+% for w in wires:
+% if loop.first:
+-- wires
+% endif
+signal ${ns.get_name(w)}: ${_get_sigtype(w)};
+% endfor
 begin
 
 % if not len(sensitivity_list):
@@ -507,13 +530,22 @@ comb: process
 % else:
 comb: process (${", ".join(sensitivity_list)}) is
 % endif
-% for cd, _ in cd_regs:
+% for cd in map(first, cd_regs):
+% if loop.first:
+-- cd variables
+% endif
 variable ${_v_name(cd)}: ${_reg_typename(cd)};  -- variable for cd "${cd}"
 % endfor
 % for v in variables:
+% if loop.first:
+-- variables
+% endif
 variable ${ns.get_name(v)}: ${_get_sigtype(v)};
 % endfor
 % for v in buffer_variables:
+% if loop.first:
+-- buffer variables
+% endif
 variable ${_v_name(ns.get_name(v))}: ${_get_sigtype(v)};
 % endfor
 
@@ -528,10 +560,6 @@ ${_indent(1)}${_v_name(cd)} := ${_r_name(cd)};
 % if loop.first:
 -- comb statements
 % endif
-${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
-% endfor
-% for statement in filter(comp(contains(buffer_variables), attrgetter("l")),\
-    assignments):
 ${_printnode(statement, f, ns, _AT_BLOCKING, 1, buffer_variables, None, None)};
 % endfor
 % for statement in map(second, sync_statements):
@@ -565,7 +593,7 @@ ${_indent(1)}${pipe(sig, ns.get_name,
 % endfor
 end process comb;
 
-% for cd in cds:
+% for cd in pipe(cds, filter(comp(contains(map(first, cd_regs)), attrgetter("name")))):
 ${cd.name}_seq: process (${ns.get_name(cd.clk)})
 begin
 ${_indent(1)}if rising_edge(${ns.get_name(cd.clk)}) then
@@ -580,13 +608,34 @@ ${str(special)}
 end architecture ${_architecture_id(name)};\
 """)
 
-def _variables(f, ios):
-    return sorted(pipe(f, juxt([
-        _sigs, comp(set, concat, map(second), _cd_regs)]),
-        reduce(sub)) - ios, key=hash)
+
+def _variables(f, specials, ios):
+    return pipe(
+        f,
+        juxt([
+            _sigs,
+            comp(partial(or_, ios), set, concat, map(second), _cd_regs),
+            flip(_wires, ios)]),
+        reduce(sub))
 
 
-def _printarchitecture(f, ios, name, ns, overrides, specials):
+def _wires(f, ios):
+    return pipe(
+        f,
+        partial(list_special_ios, ins=True, outs=True, inouts=True),
+        flip(sub, ios))
+
+
+def _buffer_variables(f, ios):
+    return pipe(
+        f,
+        juxt([
+            comp(and_(ios), list_targets),
+            comp(set, concat, map(second), _cd_regs),
+            partial(list_special_ios, ins=False, outs=True, inouts=True)]),
+        reduce(sub))
+
+def _printarchitecture(f, ios, name, ns, overrides, specials, add_data_file):
     return _architecturetemplate.render(
         name=name,
         ns=ns,
@@ -594,28 +643,21 @@ def _printarchitecture(f, ios, name, ns, overrides, specials):
         ios=ios,
         sensitivity_list=list(_sensitivity_list(f, ns, ios)),
         cd_regs=pipe(f, _cd_regs, list),
-        variables=_variables(f, ios),
-        buffer_variables=sorted(
-            pipe(f, _assignments, map(attrgetter("l")),
-                 filter(_isinstance(Hashable)),
-                 set, and_(ios)) |
-            pipe(f, juxt([_targets, comp(set, concat, map(second), _cd_regs)]),
-                 reduce(sub)) - set(_variables(f, ios)), key=hash),
+        variables=pipe(_variables(f, specials, ios), _sort_by_hash),
+        wires=pipe(_wires(f, ios), _sort_by_hash),
+        buffer_variables=pipe(_buffer_variables(f, ios), _sort_by_hash),
         groups=group_by_targets(f.comb),
         assignments=pipe(f, _assignments),
         sync_statements=pipe(f, _sorted_sync),
         comb_statements=pipe(f, _comb_statements),
-        cds=pipe(f, _get_clock_domains,
-                 partial(sorted, key=attrgetter("name")),
-                 filter(partial(operator.contains,
-                                pipe(f, _cd_regs, map(first))))),
+        cds=pipe(
+            f, _get_clock_domains, partial(sorted, key=attrgetter("name"))),
         specials=pipe(
             specials,
-            partial(sorted, key=hash),
+            _sort_by_hash,
             map(partial(call_special_classmethod, overrides,
-                        method="emit_vhdl",
-                        ns=ns,
-                        add_data_file=None))))
+                        method="emit_vhdl", ns=ns,
+                        add_data_file=add_data_file))))
 
 
 def convert(f, ios=None, name="top",
@@ -647,14 +689,15 @@ def convert(f, ios=None, name="top",
     fs, lowered_specials = lower_specials(special_overrides, f.specials)
     f += lower_basics(fs)
 
-    ns = build_namespace(unique(concatv(list_signals(f),
-                                        list_special_ios(f, True, True, True),
-                                        ios)), _reserved_keywords)
+    ns = build_namespace(
+        list_signals(f) | list_special_ios(f, True, True, True) | ios,
+        _reserved_keywords)
     ns.clock_domains = f.clock_domains
     r.ns = ns
+    specials = f.specials - lowered_specials
     r.set_main_source("".join([
         _printentity(f, ios, name, ns),
-        _printarchitecture(f, ios, name, ns, special_overrides,
-                           f.specials - lowered_specials)]))
+        _printarchitecture(
+            f, ios, name, ns, special_overrides, specials, r.add_data_file)]))
 
     return r

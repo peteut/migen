@@ -1,3 +1,5 @@
+import tempfile
+from os import path
 from migen import *  # noqa
 from migen.fhdl import verilog
 
@@ -14,4 +16,5 @@ class Example(Module):
 
 if __name__ == "__main__":
     example = Example()
-    print(verilog.convert(example, example.ios))
+    fname = path.join(tempfile.gettempdir(), "memory.v")
+    verilog.convert(example, example.ios).write(fname)

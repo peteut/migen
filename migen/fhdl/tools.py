@@ -230,7 +230,7 @@ class _ComplexSliceLowerer(_Lowerer):
                 a = _Assign(slice_proxy, node.value)
             self.comb.append(self.visit_Assign(a))
             node = _Slice(slice_proxy, node.start, node.stop)
-        return NodeTransformer.visit_Slice(self, node)
+        return super().visit_Slice(node)
 
 
 def _apply_lowerer(l, f):

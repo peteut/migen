@@ -6,7 +6,7 @@ class LatticePlatform(GenericPlatform):
     bitstream_ext = ".bit"
 
     def __init__(self, *args, toolchain="diamond", **kwargs):
-        GenericPlatform.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         if toolchain == "diamond":
             self.toolchain = diamond.LatticeDiamondToolchain()
         elif toolchain == "icestorm":
@@ -15,10 +15,10 @@ class LatticePlatform(GenericPlatform):
         else:
             raise ValueError("Unknown toolchain")
 
-    def get_verilog(self, *args, special_overrides=dict(), **kwargs):
+    def get_hdl(self, *args, special_overrides=dict(), **kwargs):
         so = dict(common.lattice_special_overrides)
         so.update(special_overrides)
-        return GenericPlatform.get_verilog(self, *args, special_overrides=so, **kwargs)
+        return super().get_hdl(*args, special_overrides=so, **kwargs)
 
     def build(self, *args, **kwargs):
         return self.toolchain.build(self, *args, **kwargs)

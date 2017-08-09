@@ -36,6 +36,7 @@ class TestExamplesBasic(unittest.TestCase):
 for name in ("arrays",
              "fsm",
              "graycounter",
+             "instance",
              "local_cd",
              "memory",
              "namer",

@@ -97,8 +97,7 @@ def value_bits_sign(v):
             return obs[0][0] + extra, obs[0][1]
         elif v.op in ("&", "^", "|"):
             return _bitwise_binary_bits_sign(*obs)
-        elif (v.op == "<" or v.op == "<=" or v.op == "==" or v.op == "!=" or
-              v.op == ">" or v.op == ">="):
+        elif v.op in ("<", "<=",  "==", "!=", ">", ">="):
             return 1, False
         elif v.op == "~":
             return obs[0]

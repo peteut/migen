@@ -3,6 +3,7 @@
 
 import os
 import sys
+from toolz.curried import *  # noqa
 
 from migen.fhdl.structure import _Fragment
 from migen.build.generic_platform import *  # noqa
@@ -130,12 +131,11 @@ class XilinxVivadoToolchain:
         tools.write_to_file(build_name + ".tcl", "\n".join(tcl))
 
     def _convert_clocks(self, platform):
-        for clk, period in sorted(self.clocks.items(), key=lambda x: x[0].duid):
+        for clk, period in sorted(self.clocks.items(), key=comp(hash, first)):
             platform.add_platform_command(
                 "create_clock -name {clk} -period " + str(period) +
                 " [get_nets {clk}]", clk=clk)
-        for from_, to in sorted(self.false_paths,
-                                key=lambda x: (x[0].duid, x[1].duid)):
+        for from_, to in sorted(self.false_paths, key=comp(tuple, map(hash))):
             if (from_ not in self.clocks
                     or to not in self.clocks):
                 raise ValueError("Vivado requires period "
@@ -163,29 +163,31 @@ class XilinxVivadoToolchain:
         )
 
     def build(self, platform, fragment, build_dir="build", build_name="top",
-            toolchain_path="/opt/Xilinx/Vivado", source=True, run=True):
+              toolchain_path="/opt/Xilinx/Vivado", source=True, run=True,
+              **kwargs):
         os.makedirs(build_dir, exist_ok=True)
         cwd = os.getcwd()
         os.chdir(build_dir)
+        hdl = kwargs.get("hdl", "verilog")
 
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
         platform.finalize(fragment)
         self._convert_clocks(platform)
         self._constrain(platform)
-        v_output = platform.get_verilog(fragment)
-        named_sc, named_pc = platform.resolve_signals(v_output.ns)
-        v_file = build_name + ".v"
-        v_output.write(v_file)
-        sources = platform.sources | {(v_file, "verilog", "work")}
-        self._build_batch(platform, sources, build_name)
+        output = platform.get_hdl(fragment, hdl=hdl)
+        named_sc, named_pc = platform.resolve_signals(output.ns)
+        hdl_file = "{}.{}".format(build_name, "v" if hdl == "verilog" else "vhd")
+        output.write(hdl_file)
+        platform.add_source(hdl_file)
+        self._build_batch(platform, platform.sources, build_name)
         tools.write_to_file(build_name + ".xdc", _build_xdc(named_sc, named_pc))
         if run:
             _run_vivado(build_name, toolchain_path, source)
 
         os.chdir(cwd)
 
-        return v_output.ns
+        return output.ns
 
     def add_period_constraint(self, platform, clk, period):
         if clk in self.clocks:

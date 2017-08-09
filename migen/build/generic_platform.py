@@ -1,9 +1,10 @@
 import os
+from operator import methodcaller
 
 from migen.fhdl.structure import Signal
 from migen.genlib.record import Record
 from migen.genlib.io import CRG
-from migen.fhdl import verilog, edif
+from migen.fhdl import verilog, vhdl, edif
 from migen.build import tools
 
 
@@ -333,11 +334,14 @@ class GenericPlatform:
 
         return named_sc, named_pc
 
-    def get_verilog(self, fragment, **kwargs):
-        return verilog.convert(
+    def get_hdl(self, fragment, **kwargs):
+        hdl = kwargs.pop("hdl", "verilog")
+        return methodcaller(
+            "convert",
             fragment,
             self.constraint_manager.get_io_signals(),
-            create_clock_domains=False, **kwargs)
+            create_clock_domains=False, **kwargs)(
+                verilog if hdl == "verilog" else vhdl)
 
     def get_edif(self, fragment, cell_library, vendor, device, **kwargs):
         return edif.convert(
