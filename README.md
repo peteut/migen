@@ -2,8 +2,8 @@
 
 [![Build Status](https://travis-ci.org/peteut/migen.svg)](
 https://travis-ci.org/peteut/migen)
-[![Coverage Status](https://coveralls.io/repos/peteut/migen/badge.svg?branch=vhdl)](
-https://coveralls.io/r/peteut/migen?branch=vhdl)
+[![Coverage Status](https://coveralls.io/repos/peteut/migen/badge.svg)](
+https://coveralls.io/r/peteut/migen)
 
 #### A Python toolbox for building complex digital hardware
 
@@ -51,6 +51,7 @@ https://m-labs.hk/gateware.html
 ```python
 from migen import *
 from migen.build.platforms import m1
+
 plat = m1.Platform()
 led = plat.request("user_led")
 m = Module()
@@ -59,6 +60,85 @@ m.comb += led.eq(counter[25])
 m.sync += counter.eq(counter + 1)
 plat.build(m)
 ```
+
+The module can be exported as HDL like this:
+
+```python
+from migen import *
+from migen.fhdl import vhdl
+
+def get_readme_module():
+    m = Module()
+    led = Signal()
+    counter = Signal(26)
+    m.comb += led.eq(counter[25])
+    m.sync += counter.eq(counter + 1)
+    return m, ios
+
+example = get_readme_module()
+vhdl.convert(example, ios).write("module.vhd")
+```
+
+yields:
+
+```vhdl
+-- Machine generated using Migen - experimental VHDL backend
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+library ieee_proposed;
+use ieee_proposed.numeric_std_additions.all;
+use ieee_proposed.std_logic_1164_additions.all;
+
+entity top is
+port (led: out std_ulogic;
+      sys_clk: in std_ulogic;
+      sys_rst: in std_ulogic);
+end entity top;
+
+architecture two_process_top of top is
+
+type sys_reg_t is record
+    counter: std_logic_vector(25 downto 0);
+end record sys_reg_t;
+
+signal sys_rin: sys_reg_t; -- register input for cd "sys"
+signal sys_r: sys_reg_t; -- register for cd "sys"
+
+begin
+
+comb: process (sys_rst, sys_r) is
+-- cd variables
+variable sys_v: sys_reg_t;  -- variable for cd "sys"
+-- buffer variables
+variable led_v: std_ulogic;
+
+begin
+-- defaults
+    sys_v := sys_r;
+-- comb statements
+    led_v := sys_r.counter(25);
+-- sync statements
+    sys_v.counter := std_logic_vector(unsigned(sys_r.counter) + 1);
+    if \??\(sys_rst) then
+        sys_v.counter := (others => '0');
+    end if;
+-- drive register input
+    sys_rin <= sys_v;
+-- drive outputs
+    led <= led_v;
+end process comb;
+
+sys_seq: process (sys_clk)
+begin
+    if rising_edge(sys_clk) then
+        sys_r <= sys_rin;
+    end if;
+end process;
+
+end architecture two_process_top;
+```
+
 
 #### License
 
