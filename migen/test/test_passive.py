@@ -1,6 +1,6 @@
 import unittest
 
-from migen import *
+from migen import *  # noqa
 
 
 class PassiveCase(unittest.TestCase):
@@ -8,6 +8,7 @@ class PassiveCase(unittest.TestCase):
         n = 5
 
         count = 0
+
         @passive
         def counter():
             nonlocal count

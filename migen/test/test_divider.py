@@ -1,12 +1,12 @@
 import sys
+from migen import *  # noqa
+from migen.genlib.divider import Divider
+from migen.test.support import SimCase
+
 if sys.version_info < (3, 4):
     import unittest2 as unittest
 else:
     import unittest
-
-from migen import *
-from migen.genlib.divider import Divider
-from migen.test.support import SimCase
 
 
 class DivisionCase(SimCase, unittest.TestCase):

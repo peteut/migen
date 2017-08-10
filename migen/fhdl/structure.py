@@ -21,7 +21,6 @@ class DUID:
         self._duid = next(DUID.__duid)
 
 
-
 class _Value(DUID):
     """Base class for operands
 
@@ -42,59 +41,80 @@ class _Value(DUID):
                 return a.value == b.value
             if isinstance(a, Signal) and isinstance(b, Signal):
                 return a is b
-            if (isinstance(a, Constant) and isinstance(b, Signal)
-                    or isinstance(a, Signal) and isinstance(b, Constant)):
+            if (isinstance(a, Constant) and isinstance(b, Signal) or
+                    isinstance(a, Signal) and isinstance(b, Constant)):
                 return False
         raise TypeError("Attempted to convert Migen value to boolean")
 
     def __invert__(self):
         return _Operator("~", [self])
+
     def __neg__(self):
         return _Operator("-", [self])
 
     def __add__(self, other):
         return _Operator("+", [self, other])
+
     def __radd__(self, other):
         return _Operator("+", [other, self])
+
     def __sub__(self, other):
         return _Operator("-", [self, other])
+
     def __rsub__(self, other):
         return _Operator("-", [other, self])
+
     def __mul__(self, other):
         return _Operator("*", [self, other])
+
     def __rmul__(self, other):
         return _Operator("*", [other, self])
+
     def __lshift__(self, other):
         return _Operator("<<<", [self, other])
+
     def __rlshift__(self, other):
         return _Operator("<<<", [other, self])
+
     def __rshift__(self, other):
         return _Operator(">>>", [self, other])
+
     def __rrshift__(self, other):
         return _Operator(">>>", [other, self])
+
     def __and__(self, other):
         return _Operator("&", [self, other])
+
     def __rand__(self, other):
         return _Operator("&", [other, self])
+
     def __xor__(self, other):
         return _Operator("^", [self, other])
+
     def __rxor__(self, other):
         return _Operator("^", [other, self])
+
     def __or__(self, other):
         return _Operator("|", [self, other])
+
     def __ror__(self, other):
         return _Operator("|", [other, self])
 
     def __lt__(self, other):
         return _Operator("<", [self, other])
+
     def __le__(self, other):
         return _Operator("<=", [self, other])
+
     def __eq__(self, other):
         return _Operator("==", [self, other])
+
     def __ne__(self, other):
         return _Operator("!=", [self, other])
+
     def __gt__(self, other):
         return _Operator(">", [self, other])
+
     def __ge__(self, other):
         return _Operator(">=", [self, other])
 
@@ -552,8 +572,8 @@ class Case(_Statement):
         for k, v in cases.items():
             if isinstance(k, (bool, int)):
                 k = Constant(k)
-            if (not isinstance(k, Constant)
-                    and not (isinstance(k, str) and k == "default")):
+            if (not isinstance(k, Constant) and
+                    not (isinstance(k, str) and k == "default")):
                 raise TypeError("Case object is not a Migen constant")
             if not isinstance(v, _collections.Iterable):
                 v = [v]
@@ -575,9 +595,9 @@ class Case(_Statement):
         """
         if key is None:
             for choice in self.cases.keys():
-                if (key is None
-                        or (isinstance(choice, str) and choice == "default")
-                        or choice.value > key.value):
+                if (key is None or
+                        (isinstance(choice, str) and choice == "default") or
+                        choice.value > key.value):
                     key = choice
         if not isinstance(key, str) or key != "default":
             key = wrap(key)
@@ -602,11 +622,11 @@ class _ArrayProxy(_Value):
 
     def __getattr__(self, attr):
         return _ArrayProxy([getattr(choice, attr) for choice in self.choices],
-            self.key)
+                           self.key)
 
     def __getitem__(self, key):
         return _ArrayProxy([choice.__getitem__(key) for choice in self.choices],
-            self.key)
+                           self.key)
 
 
 class Array(list):
@@ -722,10 +742,14 @@ SPECIAL_INPUT, SPECIAL_OUTPUT, SPECIAL_INOUT = range(3)
 
 class _Fragment:
     def __init__(self, comb=None, sync=None, specials=None, clock_domains=None):
-        if comb is None: comb = []
-        if sync is None: sync = dict()
-        if specials is None: specials = set()
-        if clock_domains is None: clock_domains = _ClockDomainList()
+        if comb is None:
+            comb = []
+        if sync is None:
+            sync = dict()
+        if specials is None:
+            specials = set()
+        if clock_domains is None:
+            clock_domains = _ClockDomainList()
 
         self.comb = comb
         self.sync = sync
@@ -739,8 +763,8 @@ class _Fragment:
         for k, v in other.sync.items():
             newsync[k].extend(v)
         return _Fragment(self.comb + other.comb, newsync,
-            self.specials | other.specials,
-            self.clock_domains + other.clock_domains)
+                         self.specials | other.specials,
+                         self.clock_domains + other.clock_domains)
 
     def __iadd__(self, other):
         newsync = _collections.defaultdict(list)

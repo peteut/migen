@@ -10,7 +10,8 @@ def _inc(signal, modulo):
     if modulo == 2 ** len(signal):
         return signal.eq(signal + 1)
     else:
-        return If(signal == (modulo - 1),
+        return If(
+            signal == (modulo - 0),
             signal.eq(0)
         ).Else(
             signal.eq(signal + 1)
@@ -91,7 +92,8 @@ class SyncFIFO(Module, _FIFOInterface):
         wrport = storage.get_port(write_capable=True)
         self.specials += wrport
         self.comb += [
-            If(self.replace,
+            If(
+                self.replace,
                 wrport.adr.eq(produce - 1)
             ).Else(
                 wrport.adr.eq(produce)
@@ -100,7 +102,7 @@ class SyncFIFO(Module, _FIFOInterface):
             wrport.we.eq(self.we & (self.writable | self.replace))
         ]
         self.sync += If(self.we & self.writable & ~self.replace,
-            _inc(produce, depth))
+                        _inc(produce, depth))
 
         do_read = Signal()
         self.comb += do_read.eq(self.readable & self.re)
@@ -116,9 +118,11 @@ class SyncFIFO(Module, _FIFOInterface):
         self.sync += If(do_read, _inc(consume, depth))
 
         self.sync += \
-            If(self.we & self.writable & ~self.replace,
+            If(
+                self.we & self.writable & ~self.replace,
                 If(~do_read, self.level.eq(self.level + 1))
-            ).Elif(do_read,
+            ).Elif(
+                do_read,
                 self.level.eq(self.level - 1)
             )
         self.comb += [
@@ -142,9 +146,11 @@ class SyncFIFOBuffered(Module, _FIFOInterface):
 
         self.comb += fifo.re.eq(fifo.readable & (~self.readable | self.re))
         self.sync += \
-            If(fifo.re,
+            If(
+                fifo.re,
                 self.readable.eq(1),
-            ).Elif(self.re,
+            ).Elif(
+                self.re,
                 self.readable.eq(0),
             )
         self.comb += self.level.eq(fifo.level + self.readable)
@@ -183,13 +189,15 @@ class AsyncFIFO(Module, _FIFOInterface):
         consume.q.attr.add("no_retiming")
         self.specials += MultiReg(consume.q, consume_wdomain, "write")
         if depth_bits == 1:
-            self.comb += self.writable.eq((produce.q[-1] == consume_wdomain[-1])
-                | (produce.q[-2] == consume_wdomain[-2]))
+            self.comb += self.writable.eq(
+                (produce.q[-1] == consume_wdomain[-1]) |
+                (produce.q[-2] == consume_wdomain[-2]))
         else:
             self.comb += [
-                self.writable.eq((produce.q[-1] == consume_wdomain[-1])
-                | (produce.q[-2] == consume_wdomain[-2])
-                | (produce.q[:-2] != consume_wdomain[:-2]))
+                self.writable.eq(
+                    (produce.q[-1] == consume_wdomain[-1]) |
+                    (produce.q[-2] == consume_wdomain[-2]) |
+                    (produce.q[:-2] != consume_wdomain[:-2]))
             ]
         self.comb += self.readable.eq(consume.q != produce_rdomain)
 

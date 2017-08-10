@@ -84,7 +84,7 @@ def group_by_targets(sl):
                     group += old_group
         groups.append((targets, group))
     return [(targets, _resort_statements(stmts))
-        for targets, stmts in groups]
+            for targets, stmts in groups]
 
 
 def list_special_ios(f, ins, outs, inouts):
@@ -201,7 +201,7 @@ class _BasicLowerer(_Lowerer):
             self.extra_stmts.append(Case(k, cases).makedefault())
         else:
             cases = dict((n, _Assign(array_muxed, self.visit(choice)))
-                for n, choice in enumerate(node.choices))
+                         for n, choice in enumerate(node.choices))
             self.comb.append(Case(self.visit(node.key), cases).makedefault())
         return array_muxed
 

@@ -95,4 +95,3 @@ class DDROutput(Special):
     @staticmethod
     def lower(dr):
         raise NotImplementedError("Attempted to use a DDR output, but platform does not support them")
-

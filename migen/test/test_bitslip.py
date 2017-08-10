@@ -12,15 +12,15 @@ class BitSlipModel:
 
     def simulate(self, bitslip, sequence):
         # prepare sequence for simulation
-        s = [0]*self.latency
+        s = [0] * self.latency
         for d in sequence:
             s.append(d)
         # simulate bitslip
         r = []
-        for i in range(len(s)-1):
-            v = (s[i+1] << self.data_width) | s[i]
+        for i in range(len(s) - 1):
+            v = (s[i + 1] << self.data_width) | s[i]
             v = v >> bitslip
-            v &= 2**self.data_width-1
+            v &= 2**self.data_width - 1
             r.append(v)
         return r
 

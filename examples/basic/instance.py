@@ -11,9 +11,11 @@ from migen.fhdl import vhdl
 # second.
 class ParentModule(Module):
     def __init__(self):
-        self.inputs = [Signal(x + 1, name="input{}".format(x)) for x in range(4)]
+        self.inputs = [Signal(
+            x + 1, name="input{}".format(x)) for x in range(4)]
         self.trans = [Signal(x + 1) for x in range(4)]
-        self.outputs = [Signal(x + 1, name="output{}".format(x)) for x in range(4)]
+        self.outputs = [
+            Signal(x + 1, name="output{}".format(x)) for x in range(4)]
         self.io = set(self.inputs) | set(self.outputs)
         i = Instance("ChildModule",
                      i_master_clk=ClockSignal(),
@@ -26,7 +28,7 @@ class ParentModule(Module):
                      o_output1=self.trans[1],
                      o_output2=self.trans[2],
                      o_output3=self.trans[3]
-        )
+                     )
         j = Instance("ChildModule",
                      i_master_clk=ClockSignal(),
                      i_master_rst=ResetSignal(),
@@ -38,14 +40,17 @@ class ParentModule(Module):
                      o_output1=self.outputs[1],
                      o_output2=self.outputs[2],
                      o_output3=self.outputs[3]
-        )
+                     )
         self.specials += i, j
 
 
 class ChildModule(Module):
     def __init__(self):
-        self.inputs = [Signal(x + 1, name_override="input{}".format(x)) for x in range(4)]
-        self.outputs = [Signal(x + 1, name_override="output{}".format(x)) for x in range(4)]
+        self.inputs = [Signal(
+            x + 1, name_override="input{}".format(x)) for x in range(4)]
+        self.outputs = [
+            Signal(
+                x + 1, name_override="output{}".format(x)) for x in range(4)]
         self.io = set()
         for x in range(4):
             self.sync.master += self.outputs[x].eq(self.inputs[x])
@@ -66,6 +71,7 @@ def test_instance_module():
 
     subprocess.check_call(["nvc", "--syntax", sub_fname, im_fname])
     subprocess.check_call(["nvc", "-a", sub_fname, im_fname])
+
 
 if __name__ == "__main__":
     test_instance_module()

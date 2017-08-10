@@ -110,7 +110,7 @@ class Record:
 
     def eq(self, other):
         return [getattr(self, f[0]).eq(getattr(other, f[0]))
-          for f in self.layout if hasattr(other, f[0])]
+                for f in self.layout if hasattr(other, f[0])]
 
     def iter_flat(self):
         for f in self.layout:

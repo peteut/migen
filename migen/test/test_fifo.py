@@ -1,7 +1,7 @@
 import unittest
 from itertools import count
 
-from migen import *
+from migen import *  # noqa
 from migen.genlib.fifo import SyncFIFO
 
 from migen.test.support import SimCase
@@ -13,7 +13,8 @@ class SyncFIFOCase(SimCase, unittest.TestCase):
             self.submodules.dut = SyncFIFO(64, 2)
 
             self.sync += [
-                If(self.dut.we & self.dut.writable,
+                If(
+                    self.dut.we & self.dut.writable,
                     self.dut.din[:32].eq(self.dut.din[:32] + 1),
                     self.dut.din[32:].eq(self.dut.din[32:] + 2)
                 )
@@ -21,6 +22,7 @@ class SyncFIFOCase(SimCase, unittest.TestCase):
 
     def test_run_sequence(self):
         seq = list(range(20))
+
         def gen():
             for cycle in count():
                 # fire re and we at "random"
@@ -33,12 +35,13 @@ class SyncFIFOCase(SimCase, unittest.TestCase):
                     except IndexError:
                         break
                     self.assertEqual((yield self.tb.dut.dout[:32]), i)
-                    self.assertEqual((yield self.tb.dut.dout[32:]), i*2)
+                    self.assertEqual((yield self.tb.dut.dout[32:]), i * 2)
                 yield
         self.run_with(gen())
 
     def test_replace(self):
         seq = [x for x in range(20) if x % 5]
+
         def gen():
             for cycle in count():
                 yield self.tb.dut.we.eq(cycle % 2 == 0)
@@ -51,6 +54,6 @@ class SyncFIFOCase(SimCase, unittest.TestCase):
                     except IndexError:
                         break
                     self.assertEqual((yield self.tb.dut.dout[:32]), i)
-                    self.assertEqual((yield self.tb.dut.dout[32:]), i*2)
+                    self.assertEqual((yield self.tb.dut.dout[32:]), i * 2)
                 yield
         self.run_with(gen())

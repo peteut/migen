@@ -30,7 +30,7 @@ class Encoder(Module):
         self.i = Signal(width)  # one-hot
         self.o = Signal(max=max(2, width))  # binary
         self.n = Signal()  # invalid: none or multiple
-        act = dict((1<<j, self.o.eq(j)) for j in range(width))
+        act = dict((1 << j, self.o.eq(j)) for j in range(width))
         act["default"] = self.n.eq(1)
         self.comb += Case(self.i, act)
 
@@ -89,7 +89,7 @@ class Decoder(Module):
         self.i = Signal(max=max(2, width))  # binary
         self.n = Signal()  # none/invalid
         self.o = Signal(width)  # one-hot
-        act = dict((j, self.o.eq(1<<j)) for j in range(width))
+        act = dict((j, self.o.eq(1 << j)) for j in range(width))
         self.comb += Case(self.i, act)
         self.comb += If(self.n, self.o.eq(0))
 

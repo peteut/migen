@@ -41,5 +41,6 @@ class Example(Module):
                 allsigs.extend(obj.sigs)
         self.comb += output.eq(reduce(or_, allsigs))
 
+
 if __name__ == "__main__":
     print(verilog.convert(Example()))

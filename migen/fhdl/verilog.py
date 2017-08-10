@@ -27,7 +27,7 @@ _reserved_keywords = {
     "specify", "specparam", "strong0", "strong1", "supply0", "supply1",
     "table", "task", "time", "tran", "tranif0", "tranif1", "tri", "tri0",
     "tri1", "triand", "trior", "trireg", "unsigned", "use", "vectored", "wait",
-    "wand", "weak0", "weak1", "while", "wire", "wor","xnor", "xor"
+    "wand", "weak0", "weak1", "while", "wire", "wor", "xnor", "xor"
 }
 
 
@@ -74,7 +74,7 @@ def _printexpr(ns, node):
                     r1 = "$signed({{1'd0, {}}})".format(r1)
                 if s1 and not s2:
                     r2 = "$signed({{1'd0, {}}})".format(r2)
-            r = " ".join((r1,  node.op, r2))
+            r = " ".join((r1, node.op, r2))
             s = s1 or s2
         elif arity == 3:
             assert node.op == "m"
@@ -84,22 +84,22 @@ def _printexpr(ns, node):
                 r3 = "$signed({{1'd0, {}}})".format(r3)
             if s3 and not s2:
                 r2 = "$signed({{1'd0, {}}})".format(r2)
-            r = " ".join((r1, "?", r2,  ":", r3))
+            r = " ".join((r1, "?", r2, ":", r3))
             s = s2 or s3
         else:
             raise TypeError
         return "(" + r + ")", s
     elif isinstance(node, _Slice):
         # Verilog does not like us slicing non-array signals...
-        if isinstance(node.value, Signal) \
-          and len(node.value) == 1 \
-          and node.start == 0 and node.stop == 1:
-              return _printexpr(ns, node.value)
+        if isinstance(node.value, Signal) and \
+                len(node.value) == 1 and \
+                node.start == 0 and node.stop == 1:
+            return _printexpr(ns, node.value)
 
         if node.start + 1 == node.stop:
             sr = "[{}]".format(node.start)
         else:
-            sr = "[{}:{}]".format(node.stop - 1,  node.start)
+            sr = "[{}:{}]".format(node.stop - 1, node.start)
         r, s = _printexpr(ns, node.value)
         return r + sr, s
     elif isinstance(node, Cat):
@@ -164,6 +164,7 @@ def _list_comb_wires(f):
         if len(g[1]) == 1 and isinstance(g[1][0], _Assign):
             r |= g[0]
     return r
+
 
 def _printattr(attr, attr_translate):
     r = ""
@@ -311,10 +312,10 @@ class DummyAttrTranslate:
 
 
 def convert(f, ios=None, name="top",
-  special_overrides=dict(),
-  attr_translate=DummyAttrTranslate(),
-  create_clock_domains=True,
-  display_run=False, asic_syntax=False):
+            special_overrides=dict(),
+            attr_translate=DummyAttrTranslate(),
+            create_clock_domains=True,
+            display_run=False, asic_syntax=False):
     r = ConvOutput()
     if not isinstance(f, _Fragment):
         f = f.get_fragment()
@@ -343,9 +344,9 @@ def convert(f, ios=None, name="top",
             io_name = io.backtrace[-1][0]
             if io_name:
                 io.name_override = io_name
-    ns = build_namespace(list_signals(f)
-        | list_special_ios(f, True, True, True)
-        | ios, _reserved_keywords)
+    ns = build_namespace(list_signals(f) |
+                         list_special_ios(f, True, True, True) |
+                         ios, _reserved_keywords)
     ns.clock_domains = f.clock_domains
     r.ns = ns
 
@@ -358,7 +359,7 @@ def convert(f, ios=None, name="top",
                       blocking_assign=asic_syntax)
     src += _printsync(f, ns)
     src += _printspecials(special_overrides, f.specials - lowered_specials,
-        ns, r.add_data_file, attr_translate)
+                          ns, r.add_data_file, attr_translate)
     src += "endmodule\n"
     r.set_main_source(src)
 

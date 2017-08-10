@@ -22,4 +22,4 @@ if __name__ == "__main__":
     fname = path.join(tempfile.gettempdir(), "reslice.vhd")
     vhdl.convert(Example()).write(fname)
     subprocess.check_call(["nvc", "--syntax", fname])
-    subprocess.check_call(["nvc","--std=2008", "-a", fname])
+    subprocess.check_call(["nvc", "--std=2008", "-a", fname])

@@ -21,17 +21,19 @@ def _make_test_method(name, foldername):
 class TestExamplesSim(unittest.TestCase):
     pass
 
+
 for name in ("basic1",
-              "basic2",
-              # skip "fir" as it depends on SciPy
-              # "fir",
-              "memory"):
+             "basic2",
+             # skip "fir" as it depends on SciPy
+             # "fir",
+             "memory"):
     setattr(TestExamplesSim, "test_" + name,
             _make_test_method(name, "sim"))
 
 
 class TestExamplesBasic(unittest.TestCase):
     pass
+
 
 for name in ("arrays",
              "fsm",
@@ -47,4 +49,3 @@ for name in ("arrays",
              "two_dividers"):
     setattr(TestExamplesBasic, "test_" + name,
             _make_test_method(name, "basic"))
-

@@ -32,6 +32,7 @@ def counter_test(dut):
 # Cycle: 4 Count: -3
 # ...
 
+
 if __name__ == "__main__":
     dut = Counter()
     run_simulation(dut, counter_test(dut), vcd_name="basic2.vcd")

@@ -6,7 +6,7 @@ except ImportError:
 from enum import Enum
 
 from migen.fhdl.structure import *  # noqa
-from migen.fhdl.structure import _Operator,_Slice, _Assign, _Fragment
+from migen.fhdl.structure import _Operator, _Slice, _Assign, _Fragment
 from migen.fhdl.tools import *  # noqa
 from migen.fhdl.namer import build_namespace
 from migen.fhdl.conv_output import ConvOutput
@@ -15,7 +15,7 @@ from mako.template import Template
 
 from toolz.curried import *  # noqa
 from toolz.compatibility import iteritems
-from operator import (is_, and_, or_, and_, attrgetter, sub,
+from operator import (is_, and_, or_, attrgetter, sub,
                       mul, contains)
 
 is_, and_, mul, sub, contains = map(curry, [is_, and_, mul, sub, contains])
@@ -47,10 +47,10 @@ def _get_sigtype(s):
     return ("std_ulogic" if len(s) is 1
             else "std_logic_vector({} downto 0)".format(len(s) - 1))
 
+
 _sort_by_hash = partial(sorted, key=hash)
 
-_entitytemplate = Template(
-"""\
+_entitytemplate = Template("""\
 <%!
 from migen.fhdl.vhdl import _get_sigtype
 %><%
@@ -94,6 +94,7 @@ def _printentity(f, ios, name, ns):
         name=name, inouts=_inouts(f),
         targets=_targets(f), ns=ns, ios=sorted(ios, key=hash))
 
+
 _get_comb, _get_sync, _get_clock_domains = map(
     attrgetter, ["comb", "sync", "clock_domains"])
 
@@ -115,7 +116,7 @@ _cd_regs = comp(
     _sorted_sync)
 
 _assignment_filter_fn = comp(
-    reduce(and_),juxt([
+    reduce(and_), juxt([
         comp(is_(1), len, first),
         comp(flip(isinstance)(_Assign), get_in([1, 0]))]))
 
@@ -130,12 +131,13 @@ _comb_statements = comp(pluck(1), _comb)
 
 def _sensitivity_list(f, ns, ios):
     ios = pipe(
-        (ios | _inouts(f))
-        - (_targets(f) |
-           pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
+        (ios | _inouts(f)) - (
+            _targets(f) |
+            pipe(f, _get_clock_domains, map(attrgetter("clk")), set)),
         map(ns.get_name))
     regs = pipe(f, _cd_regs, map(first), map(_r_name))
     return concatv(ios, regs)
+
 
 _indent = mul("    ")
 
@@ -149,7 +151,7 @@ def _printexpr(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     raise NotImplementedError("{} not implemented".format(type(node)))
 
 
-_fntemplate = Template( """\
+_fntemplate = Template("""\
 <%! from collections import Iterable
 
 def _iterable(arg):
@@ -161,6 +163,7 @@ ${name | trim}(${", ".join(map(str, args)) if _iterable(args) else args})\
 
 def _fn_call(name, *args):
     return _fntemplate.render(name=name, args=args)
+
 
 _unsigned, _signed, _std_logic_vector, _to_integer = map(
     partial(partial, _fn_call),
@@ -319,7 +322,7 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
             else:
                 return expr
         elif _is_comp_op(node):
-            if all(map(comp(is_(1), len),node.operands)):
+            if all(map(comp(is_(1), len), node.operands)):
                 r1, r2 = map(partial(_printexpr, f=f, ns=ns, at=at, lhs=False,
                                      buffer_variables=buffer_variables,
                                      thint=_THint.logic, lhint=None),
@@ -367,7 +370,6 @@ def _printexpr_operator(node, f, ns, at, lhs, buffer_variables, thint, lhint):
     raise TypeError("unkown operator: {}, arity: {}".format(node, arity))
 
 
-
 @singledispatch
 def _printnode(node, f, ns, at, level, buffer_variables, thint, lhint):
     raise NotImplementedError("{} not implemented".format(type(node)))
@@ -381,8 +383,8 @@ def _printnode_iterable(node, f, ns, at, level, buffer_variables, thint, lhint):
                             thint=None, lhint=None)),
                 ";\n".join)
 
-_iftemplate = Template(
-"""\
+
+_iftemplate = Template("""\
 <%!
 from migen.fhdl.vhdl import _indent, _printnode,  _printexpr, _THint
 %>\
@@ -402,8 +404,8 @@ def _printnode_if(node, f, ns, at, level, buffer_variables, thint, lhint):
     return _iftemplate.render(f=f, node=node, ns=ns, at=at,
                               buffer_variables=buffer_variables, level=level)
 
-_casetemplate = Template(
-"""\
+
+_casetemplate = Template("""\
 <%!
 from migen.fhdl.vhdl import (_indent, _printnode, _printexpr, _THint, Constant,
     first, flip, filter, pipe, comp, filter, partial, get, attrgetter)
@@ -463,11 +465,12 @@ def _printnode_assign(node, f, ns, at, level, buffer_variables, thint, lhint):
     lhs = _printexpr(node.l, f, ns, at, True, buffer_variables, _THint.logic,
                      None)
     rhs = _printexpr(node.r, f, ns, at, False, buffer_variables, _THint.logic,
-                     len(node.l) if isinstance(node.r, Constant)
-                     or len(node.l) > len(node.r) else None)
+                     len(node.l) if isinstance(node.r, Constant) or
+                     len(node.l) > len(node.r) else None)
 
     return "{}{} {} {}".format(_indent(level), lhs,
                                ":=" if at == _AT_BLOCKING else "<=", rhs)
+
 
 @singledispatch
 def _printgeneric(param, ns):
@@ -494,8 +497,7 @@ def _printgeneric_str(param, ns):
     return "\"{}\"".format(param)
 
 
-_architecturetemplate = Template(
-"""\
+_architecturetemplate = Template("""\
 <%!
 from migen.fhdl.vhdl import (_reg_typename, _v_name, _r_name, _rin_name,
     _indent, _printnode, _get_sigtype, _Assign, _AT_BLOCKING,
@@ -634,6 +636,7 @@ def _buffer_variables(f, ios):
             comp(set, concat, map(second), _cd_regs),
             partial(list_special_ios, ins=False, outs=True, inouts=True)]),
         reduce(sub))
+
 
 def _printarchitecture(f, ios, name, ns, overrides, specials, add_data_file):
     return _architecturetemplate.render(

@@ -25,16 +25,19 @@ class Divider(Module):
             diff.eq(qr[w - 1:] - divisor_r)
         ]
         self.sync += [
-            If(self.start_i,
+            If(
+                self.start_i,
                 counter.eq(w),
                 qr.eq(self.dividend_i),
                 divisor_r.eq(self.divisor_i)
-            ).Elif(~self.ready_o,
-                    If(diff[w],
-                        qr.eq(Cat(0, qr[:2 * w - 1]))
-                    ).Else(
-                        qr.eq(Cat(1, qr[:w - 1], diff[:w]))
-                    ),
-                    counter.eq(counter - 1)
+            ).Elif(
+                ~self.ready_o,
+                If(
+                    diff[w],
+                    qr.eq(Cat(0, qr[:2 * w - 1]))
+                ).Else(
+                    qr.eq(Cat(1, qr[:w - 1], diff[:w]))
+                ),
+                counter.eq(counter - 1)
             )
         ]

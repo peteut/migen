@@ -1,8 +1,9 @@
 import pytest
 from migen import *  # noqa
 from migen.fhdl.structure import _Fragment
-from migen.fhdl.specials import  Tristate
+from migen.fhdl.specials import Tristate
 from migen.fhdl.vhdl import _printexpr, _THint
+
 
 class NameSpace():
     def get_name(self, sig):
@@ -13,7 +14,8 @@ class NameSpace():
     "args, expected",
     [((Constant(1), None, NameSpace(), None, None, None, _THint.integer, None),
       "1"),
-     ((Constant(-1), None, NameSpace(), None, None, None, _THint.integer, None),
+     ((Constant(-1), None, NameSpace(), None, None, None, _THint.integer,
+       None),
       "(-1)"),
      ((Constant(42), None, NameSpace(), None, None, None, _THint.un_signed,
        "foo'length"), "to_unsigned(42, foo'length)"),
@@ -28,7 +30,8 @@ class NameSpace():
      ((Constant(1), None, NameSpace(), None, None, None, _THint.logic, 32),
       "(0 => '1', others => '0')")])
 def test_printexpr_should_handle_constant(args, expected):
-     assert _printexpr(*args) == expected
+    assert _printexpr(*args) == expected
+
 
 foo = Signal(32)
 bar = Signal((32, True))
@@ -40,9 +43,11 @@ bar_ = Signal(32)
     [((foo, _Fragment(), NameSpace(), None, None, None, None, None), "foo"),
      ((foo, _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
       "foo"),
-     ((foo, _Fragment(), NameSpace(), None, None, None, _THint.un_signed, None),
+     ((foo, _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
+       None),
       "unsigned(foo)"),
-     ((bar, _Fragment(), NameSpace(), None, None, None, _THint.un_signed, None),
+     ((bar, _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
+       None),
       "signed(bar)"),
      ((bar, _Fragment(), NameSpace(), None, None, None, _THint.integer, None),
       "to_integer(signed(bar))")
@@ -53,15 +58,18 @@ def test_printexpr_should_handle_signal(args, expected):
 
 @pytest.mark.parametrize(
     "args, expected",
-    [((foo[:10], _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
+    [((foo[:10], _Fragment(), NameSpace(), None, None, None, _THint.logic,
+       None),
       "foo(9 downto 0)"),
      ((foo[:10], _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
        None),
       "unsigned(foo(9 downto 0))"),
-     ((foo[:10], _Fragment(), NameSpace(), None, None, None, _THint.integer, None),
+     ((foo[:10], _Fragment(), NameSpace(), None, None, None, _THint.integer,
+       None),
       "to_integer(unsigned(foo(9 downto 0)))")])
 def test_printexpr_should_handle_slice(args, expected):
     assert _printexpr(*args) == expected
+
 
 @pytest.mark.parametrize(
     "args, expected",
@@ -71,10 +79,12 @@ def test_printexpr_should_handle_slice(args, expected):
      ((Cat(foo, Constant(42)), _Fragment(), NameSpace(), None, None, None,
        _THint.logic, None),
       "(std_logic_vector(to_unsigned(42, 6)) & foo)"),
-     ((Cat(foo, bar), _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
+     ((Cat(foo, bar), _Fragment(), NameSpace(), None, None, None,
+       _THint.un_signed,
        None),
       "unsigned((bar & foo))"),
-     ((Cat(foo, bar), _Fragment(), NameSpace(), None, None, None, _THint.integer,
+     ((Cat(foo, bar), _Fragment(), NameSpace(), None, None, None,
+       _THint.integer,
        None),
       "to_integer(unsigned((bar & foo)))")])
 def test_printexpr_should_handle_cat(args, expected):
@@ -86,34 +96,46 @@ def test_printexpr_should_handle_cat(args, expected):
     # arity 1
     [((-foo, _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
       "std_logic_vector((-signed(foo)))"),
-     ((~foo, _Fragment(), NameSpace(), None, None, None, _THint.un_signed, None),
+     ((~foo, _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
+       None),
       "unsigned(not foo)"),
-     ((~Constant(42), _Fragment(), NameSpace(), None, None, None, _THint.integer, None),
+     ((~Constant(42), _Fragment(), NameSpace(), None, None, None,
+       _THint.integer, None),
       "to_integer(unsigned(not std_logic_vector(to_unsigned(42, 6))))"),
      # arity 2
      # bitwise
-     ((foo & bar, _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
+     ((foo & bar, _Fragment(), NameSpace(), None, None, None, _THint.logic,
+       None),
       "foo and bar"),
-     ((foo | bar, _Fragment(), NameSpace(), None, None, None, _THint.un_signed, None),
+     ((foo | bar, _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
+       None),
       "unsigned(foo or bar)"),
-     ((foo ^ bar, _Fragment(), NameSpace(), None, None, None, _THint.un_signed, None),
+     ((foo ^ bar, _Fragment(), NameSpace(), None, None, None, _THint.un_signed,
+       None),
       "unsigned(foo xor bar)"),
      # compare
-     ((foo >= bar_, _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
+     ((foo >= bar_, _Fragment(), NameSpace(), None, None, None, _THint.logic,
+       None),
       "\?>=\(unsigned(foo), unsigned(bar_))"),
-     ((foo > Constant(42), _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
+     ((foo > Constant(42), _Fragment(), NameSpace(), None, None, None,
+       _THint.logic, None),
       "\?>\(unsigned(foo), 42)"),
-     ((foo > Constant(42), _Fragment(), NameSpace(), None, None, None, None, None),
+     ((foo > Constant(42), _Fragment(), NameSpace(), None, None, None, None,
+       None),
       "unsigned(foo) > 42"),
-     ((foo << Constant(2), _Fragment(), NameSpace(), None, None, None, None, None),
+     ((foo << Constant(2), _Fragment(), NameSpace(), None, None, None, None,
+       None),
       "shift_left(unsigned(foo), 2)"),
-     ((foo << Constant(2), _Fragment(), NameSpace(), None, None, None, None, None),
+     ((foo << Constant(2), _Fragment(), NameSpace(), None, None, None, None,
+       None),
       "shift_left(unsigned(foo), 2)"),
-     ((foo >> Constant(2), _Fragment(), NameSpace(), None, None, None, _THint.logic, None),
+     ((foo >> Constant(2), _Fragment(), NameSpace(), None, None, None,
+       _THint.logic, None),
       "std_logic_vector(shift_right(unsigned(foo), 2))"),
      ])
 def test_printexpr_should_handle_operator(args, expected):
     assert _printexpr(*args) == expected
+
 
 @pytest.mark.parametrize(
     "triple, expected",
@@ -124,5 +146,5 @@ foo <= o
 i <= foo;
 """)])
 def test_tristate(triple, expected):
-    assert Tristate.emit_vhdl(triple.get_tristate(foo), NameSpace(), None) == expected
-
+    assert Tristate.emit_vhdl(
+        triple.get_tristate(foo), NameSpace(), None) == expected

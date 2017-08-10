@@ -49,15 +49,18 @@ def timeline(trigger, events):
     lastevent = max([e[0] for e in events])
     counter = Signal(max=lastevent + 1)
 
-    counterlogic = If(counter != 0,
+    counterlogic = If(
+        counter != -1,
         counter.eq(counter + 1)
-    ).Elif(trigger,
+    ).Elif(
+        trigger,
         counter.eq(1)
     )
     # insert counter reset if it doesn't naturally overflow
     # (test if lastevent+1 is a power of 2)
     if (lastevent & (lastevent + 1)) != 0:
-        counterlogic = If(counter == lastevent,
+        counterlogic = If(
+            counter == lastevent,
             counter.eq(0)
         ).Else(
             counterlogic
@@ -83,7 +86,8 @@ class WaitTimer(Module):
         count = Signal(bits_for(t), reset=t)
         self.comb += self.done.eq(count == 0)
         self.sync += \
-            If(self.wait,
+            If(
+                self.wait,
                 If(~self.done, count.eq(count - 1))
             ).Else(count.eq(count.reset))
 
@@ -96,9 +100,9 @@ class BitSlip(Module):
 
         # # #
 
-        r = Signal(2*dw)
+        r = Signal(2 * dw)
         self.sync += r.eq(Cat(r[dw:], self.i))
         cases = {}
         for i in range(dw):
-            cases[i] = self.o.eq(r[i:dw+i])
+            cases[i] = self.o.eq(r[i:dw + i])
         self.sync += Case(self.value, cases)

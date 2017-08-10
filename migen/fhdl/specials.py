@@ -12,7 +12,7 @@ from migen.fhdl.verilog import _printexpr as verilog_printexpr
 
 
 __all__ = ["TSTriple", "Instance", "Memory",
-    "READ_FIRST", "WRITE_FIRST", "NO_CHANGE"]
+           "READ_FIRST", "WRITE_FIRST", "NO_CHANGE"]
 
 
 _isinstance = flip(isinstance)
@@ -40,8 +40,8 @@ class Special(DUID):
         r = set()
         for obj, attr, direction in self.iter_expressions():
             if (direction == SPECIAL_INPUT and ins) \
-              or (direction == SPECIAL_OUTPUT and outs) \
-              or (direction == SPECIAL_INOUT and inouts):
+                    or (direction == SPECIAL_OUTPUT and outs) \
+                    or (direction == SPECIAL_INOUT and inouts):
                 signals = list_signals(getattr(obj, attr))
                 r.update(signals)
         return r
@@ -60,10 +60,10 @@ class Tristate(Special):
 
     def iter_expressions(self):
         for attr, target_context in [
-          ("target", SPECIAL_INOUT),
-          ("o", SPECIAL_INPUT),
-          ("oe", SPECIAL_INPUT),
-          ("i", SPECIAL_OUTPUT)]:
+                ("target", SPECIAL_INOUT),
+                ("o", SPECIAL_INPUT),
+                ("oe", SPECIAL_INPUT),
+                ("i", SPECIAL_OUTPUT)]:
             if getattr(self, attr) is not None:
                 yield self, attr, target_context
 
@@ -82,8 +82,7 @@ class Tristate(Special):
 
     @staticmethod
     def emit_vhdl(tristate, ns, add_data_file):
-        trisatetemplate = Template(
-"""\
+        trisatetemplate = Template("""\
 <%!
 from migen.fhdl.vhdl import _indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING
 %>\
@@ -99,6 +98,7 @@ ${printexpr(tristate.i)} <= ${printexpr(tristate.target)};
 % endif
 """)
         return trisatetemplate.render(tristate=tristate, ns=ns)
+
 
 class TSTriple:
     def __init__(self, bits_sign=None, min=None, max=None, reset_o=0, reset_oe=0):
@@ -117,23 +117,28 @@ class Instance(Special):
             if expr is None:
                 expr = Signal()
             self.expr = wrap(expr)
+
     class Input(_IO):
         pass
+
     class Output(_IO):
         pass
+
     class InOut(_IO):
         pass
+
     class Parameter:
         def __init__(self, name, value):
             self.name = name
             if isinstance(value, (int, bool)):
                 value = Constant(value)
             self.value = value
+
     class PreformattedParam(str):
         pass
 
     def __init__(self, of, *items, name="", synthesis_directive=None,
-            attr=None, **kwargs):
+                 attr=None, **kwargs):
         super().__init__()
         self.of = of
         if name:
@@ -199,7 +204,8 @@ class Instance(Special):
                 r += ")"
             r += "\n) "
         r += ns.get_name(instance)
-        if parameters: r += " "
+        if parameters:
+            r += " "
         r += "(\n"
         firstp = True
         for p in instance.items:
@@ -221,8 +227,7 @@ class Instance(Special):
 
     @staticmethod
     def emit_vhdl(instance, ns, add_data_file):
-        instancetemplate = Template(
-"""\
+        instancetemplate = Template("""\
 <%!
 from migen.fhdl.vhdl import (
             _indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING,
@@ -255,13 +260,14 @@ ${"," if not loop.last else ");"}
                           filter(_isinstance(Instance.Parameter)),
                           list))
 
-(READ_FIRST, WRITE_FIRST, NO_CHANGE) = range(3)
+
+READ_FIRST, WRITE_FIRST, NO_CHANGE = range(3)
 
 
 class _MemoryPort(Special):
     def __init__(self, adr, dat_r, we=None, dat_w=None,
-      async_read=False, re=None, we_granularity=0, mode=WRITE_FIRST,
-      clock_domain="sys"):
+                 async_read=False, re=None, we_granularity=0, mode=WRITE_FIRST,
+                 clock_domain="sys"):
         super().__init__()
         self.adr = adr
         self.dat_r = dat_r
@@ -275,12 +281,12 @@ class _MemoryPort(Special):
 
     def iter_expressions(self):
         for attr, target_context in [
-          ("adr", SPECIAL_INPUT),
-          ("we", SPECIAL_INPUT),
-          ("dat_w", SPECIAL_INPUT),
-          ("re", SPECIAL_INPUT),
-          ("dat_r", SPECIAL_OUTPUT),
-          ("clock", SPECIAL_INPUT)]:
+                ("adr", SPECIAL_INPUT),
+                ("we", SPECIAL_INPUT),
+                ("dat_w", SPECIAL_INPUT),
+                ("re", SPECIAL_INPUT),
+                ("dat_r", SPECIAL_OUTPUT),
+                ("clock", SPECIAL_INPUT)]:
             yield self, attr, target_context
 
     @staticmethod
@@ -313,8 +319,8 @@ class Memory(Special):
         return _MemoryLocation(self, index)
 
     def get_port(self, write_capable=False, async_read=False,
-      has_re=False, we_granularity=0, mode=WRITE_FIRST,
-      clock_domain="sys"):
+                 has_re=False, we_granularity=0, mode=WRITE_FIRST,
+                 clock_domain="sys"):
         if we_granularity >= self.width:
             we_granularity = 0
         adr = Signal(max=self.depth)
@@ -333,14 +339,15 @@ class Memory(Special):
         else:
             re = None
         mp = _MemoryPort(adr, dat_r, we, dat_w,
-          async_read, re, we_granularity, mode,
-          clock_domain)
+                         async_read, re, we_granularity, mode,
+                         clock_domain)
         self.ports.append(mp)
         return mp
 
     @staticmethod
     def emit_verilog(memory, ns, add_data_file):
         r = ""
+
         def gn(e):
             if isinstance(e, Memory):
                 return ns.get_name(e)
@@ -393,8 +400,8 @@ class Memory(Special):
                     if port.mode == READ_FIRST:
                         rd = "\t" + bassign
                     elif port.mode == NO_CHANGE:
-                        rd = ("\tif (!{})\n".format(gn(port.we))
-                              + "\t\t" + bassign)
+                        rd = ("\tif (!{})\n".format(gn(port.we)) +
+                              "\t\t" + bassign)
                 if port.re is None:
                     r += rd
                 else:

@@ -17,6 +17,7 @@ class MultiMod(Module):
         self.submodules.foo = CDM()
         self.submodules.bar = CDM()
 
+
 if __name__ == "__main__":
     fname = path.join(tempfile.gettempdir(), "local_cd.vhd")
     mm = MultiMod()

@@ -1,8 +1,8 @@
 import unittest
 from random import randrange
 
-from migen import *
-from migen.genlib.sort import *
+from migen import *  # noqa
+from migen.genlib.sort import *  # noqa
 
 from migen.test.support import SimCase
 
@@ -23,7 +23,7 @@ class BitonicCase(SimCase, unittest.TestCase):
         def gen():
             for repeat in range(20):
                 for i in self.tb.dut.i:
-                    yield i.eq(randrange(1<<len(i)))
+                    yield i.eq(randrange(1 << len(i)))
                 yield
                 self.assertEqual(sorted((yield self.tb.dut.i)),
                                  (yield self.tb.dut.o))

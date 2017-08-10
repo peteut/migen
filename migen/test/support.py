@@ -1,4 +1,4 @@
-from migen import *
+from migen import *  # noqa
 from migen.fhdl import verilog
 
 

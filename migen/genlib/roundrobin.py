@@ -22,7 +22,8 @@ class RoundRobin(Module):
                 for j in reversed(range(i + 1, i + n)):
                     t = j % n
                     switch = [
-                        If(self.request[t],
+                        If(
+                            self.request[t],
                             self.grant.eq(t)
                         ).Else(
                             *switch

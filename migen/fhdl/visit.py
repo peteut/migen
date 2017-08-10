@@ -195,12 +195,12 @@ class NodeTransformer:
 
     def visit_clock_domains(self, node):
         return {clockname: self.visit(statements)
-            for clockname, statements in sorted(node.items(),
-                                                key=itemgetter(0))}
+                for clockname, statements in sorted(node.items(),
+                                                    key=itemgetter(0))}
 
     def visit_ArrayProxy(self, node):
         return _ArrayProxy([self.visit(choice) for choice in node.choices],
-            self.visit(node.key))
+                           self.visit(node.key))
 
     def visit_unknown(self, node):
         return node

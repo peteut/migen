@@ -116,5 +116,6 @@ def _test():
     top = RenderNode("top", [n1, n2])
     top.to_svg("test.svg")
 
+
 if __name__ == "__main__":
     _test()

@@ -30,10 +30,14 @@ class Example(Module):
         self.bl = myfsm.before_leaving("FOO")
         self.al = myfsm.after_leaving("FOO")
 
+
 if __name__ == "__main__":
     fname = path.join(tempfile.gettempdir(), "fsm.vhd")
     example = Example()
-    vhdl.convert(example, {example.s, example.counter, example.be, example.ae, example.bl, example.al}
-                 ).write(fname)
+    vhdl.convert(
+        example,
+        {example.s, example.counter, example.be, example.ae, example.bl,
+         example.al}
+    ).write(fname)
     subprocess.check_call(["nvc", "--syntax", fname])
     subprocess.check_call(["nvc", "-a", fname])

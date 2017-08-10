@@ -40,12 +40,13 @@ class BitonicSort(Module):
 
     def _sort_two(self, i0, i1, o0, o1, dir):
         self.comb += [
-                o0.eq(i0),
-                o1.eq(i1),
-                If(dir == (i0 > i1),
-                    o0.eq(i1),
-                    o1.eq(i0),
-                )]
+            o0.eq(i0),
+            o1.eq(i1),
+            If(
+                dir == (i0 > i1),
+                o0.eq(i1),
+                o1.eq(i0),
+            )]
 
     def _merge(self, i, o, dir, m):
         n = len(i)

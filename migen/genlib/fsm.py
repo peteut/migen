@@ -38,12 +38,11 @@ def _target_eq(a, b):
     elif ty == Cat:
         return all(_target_eq(x, y) for x, y in zip(a.l, b.l))
     elif ty == _Slice:
-        return (_target_eq(a.value, b.value)
-                    and a.start == b.start
-                    and a.stop == b.stop)
+        return (_target_eq(a.value, b.value) and
+                a.start == b.start and a.stop == b.stop)
     elif ty == _ArrayProxy:
-        return (all(_target_eq(x, y) for x, y in zip(a.choices, b.choices))
-                    and _target_eq(a.key, b.key))
+        return (all(_target_eq(x, y) for x, y in zip(a.choices, b.choices)) and
+                _target_eq(a.key, b.key))
     else:
         raise ValueError("NextValue cannot be used with target type '{}'"
                          .format(ty))
@@ -81,6 +80,7 @@ class _LowerNext(NodeTransformer):
             return next_value.eq(node.value), next_value_ce.eq(1)
         else:
             return node
+
 
 class FSM(Module):
     """

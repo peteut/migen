@@ -29,6 +29,7 @@ class Example(Module):
         self.specials += Instance("test", o_O=outa[y], i_I=ina[x])
         self.specials += Instance("test", o_O=outa[y], i_I=ina[x])
 
+
 if __name__ == "__main__":
     fname = path.join(tempfile.gettempdir(), "array.vhd")
     vhdl.convert(Example()).write(fname)

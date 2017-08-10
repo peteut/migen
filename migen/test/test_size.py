@@ -1,6 +1,6 @@
 import unittest
 
-from migen import *
+from migen import *  # noqa
 
 
 def _same_slices(a, b):

@@ -131,6 +131,7 @@ def _set_use_number(tree, signals):
             current = current.children[step_name]
             current.use_number = current.signal_count > len(current.numbers) and len(current.numbers) > 1
 
+
 _debug = False
 
 

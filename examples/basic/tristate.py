@@ -11,6 +11,7 @@ class Example(Module):
         self.t = TSTriple(n)
         self.specials += self.t.get_tristate(self.pad)
 
+
 if __name__ == "__main__":
     e = Example()
     fname = path.join(tempfile.gettempdir(), "tristate.vhd")

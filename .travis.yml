@@ -5,7 +5,6 @@ python:
 env:
     - TOXENV=py35
     - TOXENV=docs
-    - TOXENV=flake
 cache:
     - $HOME/.nvc/lib
     - $HOME/opt

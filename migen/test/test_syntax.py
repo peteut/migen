@@ -2,7 +2,7 @@ import unittest
 import subprocess
 import os
 
-from migen import *
+from migen import *  # noqa
 from migen.fhdl.verilog import convert
 
 
@@ -16,9 +16,9 @@ class SyntaxModule(Module):
         a = Signal()
         b = Signal()
         z = Signal()
-        as_src = Signal(16);
-        as_tgt1 = Signal(16);
-        as_tgt2 = Signal(16);
+        as_src = Signal(16)
+        as_tgt1 = Signal(16)
+        as_tgt2 = Signal(16)
         self.io = {a, b, z, en, as_src, as_tgt1, as_tgt2}
 
         self.comb += If(a, z.eq(b))
@@ -27,7 +27,7 @@ class SyntaxModule(Module):
         for xi in x:
             self.io.add(xi)
         for xi in range(1, len(x)):
-            self.comb += If(en, y[xi].eq(x[xi-1])).Else(y[xi].eq(x[xi]))
+            self.comb += If(en, y[xi].eq(x[xi - 1])).Else(y[xi].eq(x[xi]))
             self.sync += x[xi].eq(y[xi])
 
 
@@ -40,20 +40,22 @@ class SyntaxCase(unittest.TestCase):
         f = open(filename, "w")
         f.write(str(c))
         f.close()
-        subprocess.check_call("verilator --lint-only " + " ".join(options) + " " + filename,
-                              stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL, shell=True)
+        subprocess.check_call(
+            "verilator --lint-only " + " ".join(options) + " " + filename,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, shell=True)
         os.unlink(filename)
 
-    # XXX for now desactivate, travis-ci's Verilator seems to behave differently
+    # XXX for now desactivate, travis-ci's Verilator seems to behave
+    # differently
     # XXX upgrade travis-ci's Verilator?
-    #def test_generic_syntax(self):
-    #    options = [
-    #        "-Wno-WIDTH",
-    #        "-Wno-COMBDLY",
-    #        "-Wno-INITIALDLY"
-    #    ]
-    #    self.base_test("generic", False, options)
+    # def test_generic_syntax(self):
+    #     options = [
+    #         "-Wno-WIDTH",
+    #         "-Wno-COMBDLY",
+    #         "-Wno-INITIALDLY"
+    #     ]
+    #     self.base_test("generic", False, options)
 
     def test_asic_syntax(self):
         options = [

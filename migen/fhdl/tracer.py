@@ -55,6 +55,7 @@ def get_obj_var_name(override=None, default=None):
         vn = remove_underscore(vn)
     return vn
 
+
 name_to_idx = defaultdict(int)
 classname_to_objs = dict()
 
