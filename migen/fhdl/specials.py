@@ -84,15 +84,17 @@ class Tristate(Special):
     def emit_vhdl(tristate, ns, add_data_file):
         trisatetemplate = Template("""\
 <%!
-from migen.fhdl.vhdl import _indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING
+import toolz.curried as toolz
+from migen.fhdl.structure import _Fragment
+from migen.fhdl import vhdl
 %>\
 <%
-printexpr = partial(_printexpr, ns=ns, f=_Fragment(), at=_AT_NONBLOCKING,
-            lhs=None, buffer_variables=None, thint=None, lhint=None)
+printexpr = toolz.flip(vhdl._printexpr, dict(ns=ns, f=_Fragment(), at=vhdl._AT_NONBLOCKING,
+                 lhs=None, buffer_variables=None, thint=None, lhint=None))
 %>\
 ${printexpr(tristate.target)} <= ${printexpr(tristate.o)}
-${_indent(1)}when \??\(${printexpr(tristate.oe)})
-${_indent(1)}else (others => 'Z');
+${"" | vhdl._indent(1)}when \??\(${printexpr(tristate.oe)})
+${"" | vhdl._indent(1)}else (others => 'Z');
 % if tristate.i is not None:
 ${printexpr(tristate.i)} <= ${printexpr(tristate.target)};
 % endif
@@ -229,14 +231,14 @@ class Instance(Special):
     def emit_vhdl(instance, ns, add_data_file):
         instancetemplate = Template("""\
 <%!
-from migen.fhdl.vhdl import (
-            _indent, _printexpr, _Fragment, partial, _AT_NONBLOCKING,
-            _printgeneric)
+import toolz.curried as toolz
+from migen.fhdl.structure import _Fragment
+from migen.fhdl import vhdl
 %>\
 <%
-printexpr = partial(_printexpr, ns=ns, f=_Fragment(), at=_AT_NONBLOCKING,
-            lhs=None, buffer_variables=None, thint=None, lhint=None)
-printgeneric = partial(_printgeneric, ns=ns)
+printexpr = toolz.flip(vhdl._printexpr, dict(ns=ns, f=_Fragment(), at=vhdl._AT_NONBLOCKING,
+            lhs=None, buffer_variables=None, thint=None, lhint=None))
+printgeneric = toolz.partial(vhdl._printgeneric, ns=ns)
 %>\
 ${ns.get_name(instance)}: entity work.${instance.of}
 % for generic in generics:
@@ -246,8 +248,7 @@ ${"," if not bool(loop.last) else ")"}
 % endfor
 % for port in ports:
 ${"port map (" if loop.first else " " * 10}\
-${port.name} => ${printexpr(port.expr)}\
-${"," if not loop.last else ");"}
+${port.name} => ${printexpr(port.expr)}${"," if not loop.last else ");"}
 % endfor
 """)
         return instancetemplate.render(
