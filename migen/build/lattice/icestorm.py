@@ -93,8 +93,6 @@ class LatticeIceStormToolchain:
     def build(self, platform, fragment, build_dir="build", build_name="top",
               run=True):
         os.makedirs(build_dir, exist_ok=True)
-        cwd = os.getcwd()
-        os.chdir(build_dir)
 
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
@@ -105,22 +103,21 @@ class LatticeIceStormToolchain:
         v_file = build_name + ".v"
         v_output.write(v_file)
         sources = platform.sources | {(v_file, "verilog", "work")}
-        _build_yosys(platform.device, sources, platform.verilog_include_paths,
-                     build_name)
+        with ChdirContext(build_dir):
+            _build_yosys(platform.device, sources, platform.verilog_include_paths,
+                         build_name)
 
-        tools.write_to_file(build_name + ".pcf",
-                            _build_pcf(named_sc, named_pc))
-        if run:
-            (family, size, package) = self.parse_device_string(platform.device)
-            pnr_opt = self.pnr_opt + " -d " + size + " -P " + package
-            # TODO: PNR will probably eventually support LP devices.
-            icetime_opt = self.icetime_opt + " -P " + package + \
-                " -d " + "hx" + size + " -c " + \
-                str(max(self.freq_constraints.values(), default=0.0))
-            _run_icestorm(build_name, False, self.yosys_opt, pnr_opt,
-                          icetime_opt, self.icepack_opt)
-
-        os.chdir(cwd)
+            tools.write_to_file(build_name + ".pcf",
+                                _build_pcf(named_sc, named_pc))
+            if run:
+                (family, size, package) = self.parse_device_string(platform.device)
+                pnr_opt = self.pnr_opt + " -d " + size + " -P " + package
+                # TODO: PNR will probably eventually support LP devices.
+                icetime_opt = self.icetime_opt + " -P " + package + \
+                    " -d " + "hx" + size + " -c " + \
+                    str(max(self.freq_constraints.values(), default=0.0))
+                _run_icestorm(build_name, False, self.yosys_opt, pnr_opt,
+                              icetime_opt, self.icepack_opt)
 
         return v_output.ns
 

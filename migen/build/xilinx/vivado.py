@@ -3,6 +3,7 @@
 
 import os
 import sys
+import contextlib
 from toolz.curried import *  # noqa
 
 from migen.fhdl.structure import _Fragment
@@ -166,8 +167,8 @@ class XilinxVivadoToolchain:
               toolchain_path="/opt/Xilinx/Vivado", source=True, run=True,
               **kwargs):
         os.makedirs(build_dir, exist_ok=True)
-        cwd = os.getcwd()
-        os.chdir(build_dir)
+
+
         hdl = kwargs.get("hdl", "verilog")
 
         if not isinstance(fragment, _Fragment):
@@ -178,14 +179,13 @@ class XilinxVivadoToolchain:
         output = platform.get_hdl(fragment, hdl=hdl)
         named_sc, named_pc = platform.resolve_signals(output.ns)
         hdl_file = "{}.{}".format(build_name, "v" if hdl == "verilog" else "vhd")
-        output.write(hdl_file)
-        platform.add_source(hdl_file)
-        self._build_batch(platform, platform.sources, build_name)
-        tools.write_to_file(build_name + ".xdc", _build_xdc(named_sc, named_pc))
-        if run:
-            _run_vivado(build_name, toolchain_path, source)
-
-        os.chdir(cwd)
+        with ChdirContext(build_dir):
+            output.write(hdl_file)
+            platform.add_source(hdl_file)
+            self._build_batch(platform, platform.sources, build_name)
+            tools.write_to_file(build_name + ".xdc", _build_xdc(named_sc, named_pc))
+            if run:
+                _run_vivado(build_name, toolchain_path, source)
 
         return output.ns
 

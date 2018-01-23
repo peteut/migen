@@ -1,4 +1,5 @@
 import os
+import contextlib
 from operator import methodcaller
 
 from migen.fhdl.structure import Signal
@@ -225,6 +226,18 @@ class ConstraintManager:
 
     def get_platform_commands(self):
         return self.platform_commands
+
+
+class ChdirContext(contextlib.ContextDecorator):
+    def __init__(self, directory):
+        self.directory = directory
+
+    def __enter__(self):
+        self.cwd = os.getcwd()
+        os.chdir(self.directory)
+
+    def __exit__(self, *exc):
+        os.chdir(self.cwd)
 
 
 class GenericPlatform:

@@ -79,8 +79,6 @@ class LatticeDiamondToolchain:
     def build(self, platform, fragment, build_dir="build", build_name="top",
               toolchain_path="/opt/Diamond", run=True):
         os.makedirs(build_dir, exist_ok=True)
-        cwd = os.getcwd()
-        os.chdir(build_dir)
 
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
@@ -89,16 +87,15 @@ class LatticeDiamondToolchain:
         v_output = platform.get_verilog(fragment)
         named_sc, named_pc = platform.resolve_signals(v_output.ns)
         v_file = build_name + ".v"
-        v_output.write(v_file)
-        sources = platform.sources | {(v_file, "verilog", "work")}
-        _build_files(platform.device, sources, platform.verilog_include_paths, build_name)
+        with ChdirContext(build_dir):
+            v_output.write(v_file)
+            sources = platform.sources | {(v_file, "verilog", "work")}
+            _build_files(platform.device, sources, platform.verilog_include_paths, build_name)
 
-        tools.write_to_file(build_name + ".lpf", _build_lpf(named_sc, named_pc))
+            tools.write_to_file(build_name + ".lpf", _build_lpf(named_sc, named_pc))
 
-        if run:
-            _run_diamond(build_name, toolchain_path)
-
-        os.chdir(cwd)
+            if run:
+                _run_diamond(build_name, toolchain_path)
 
         return v_output.ns
 

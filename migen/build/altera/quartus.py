@@ -6,7 +6,7 @@ import subprocess
 
 from migen.fhdl.structure import _Fragment
 
-from migen.build.generic_platform import Pins, IOStandard, Misc
+from migen.build.generic_platform import Pins, IOStandard, Misc, ChdirContext
 from migen.build import tools
 
 
@@ -117,27 +117,25 @@ class AlteraQuartusToolchain:
               toolchain_path="/opt/Altera", run=True):
         cwd = os.getcwd()
         os.makedirs(build_dir, exist_ok=True)
-        os.chdir(build_dir)
 
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
-        platform.finalize(fragment)
+            platform.finalize(fragment)
 
         v_output = platform.get_verilog(fragment)
         named_sc, named_pc = platform.resolve_signals(v_output.ns)
         v_file = build_name + ".v"
-        v_output.write(v_file)
-        sources = platform.sources | {(v_file, "verilog", "work")}
-        _build_files(platform.device,
-                     sources,
-                     platform.verilog_include_paths,
-                     named_sc,
-                     named_pc,
-                     build_name)
-        if run:
-            _run_quartus(build_name, toolchain_path)
-
-        os.chdir(cwd)
+        with ChdirContext(build_dir):
+            v_output.write(v_file)
+            sources = platform.sources | {(v_file, "verilog", "work")}
+            _build_files(platform.device,
+                         sources,
+                         platform.verilog_include_paths,
+                         named_sc,
+                         named_pc,
+                         build_name)
+            if run:
+                _run_quartus(build_name, toolchain_path)
 
         return v_output.ns
 

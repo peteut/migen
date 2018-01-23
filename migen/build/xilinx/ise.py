@@ -162,9 +162,7 @@ class XilinxISEToolchain:
         vns = None
 
         os.makedirs(build_dir, exist_ok=True)
-        cwd = os.getcwd()
-        os.chdir(build_dir)
-        try:
+        with ChdirContext(build_dir):
             if mode == "xst" or mode == "yosys":
                 v_output = platform.get_verilog(fragment)
                 vns = v_output.ns
@@ -197,8 +195,6 @@ class XilinxISEToolchain:
                 _run_ise(build_name, toolchain_path, source, isemode,
                          ngdbuild_opt, self.bitgen_opt, self.ise_commands,
                          self.map_opt, self.par_opt)
-        finally:
-            os.chdir(cwd)
 
         return vns
 
