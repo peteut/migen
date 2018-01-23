@@ -3,6 +3,10 @@ language: python
 python:
     - 3.5
 env:
+    global:
+    - LLVM_VERSION=5.0
+    - LLVM_CONFIG="/usr/bin/llvm-config-${LLVM_VERSION}"
+    matrix:
     - TOXENV=py35
     - TOXENV=docs
 cache:
@@ -10,11 +14,13 @@ cache:
     - $HOME/opt
 addons:
     apt:
+        sources:
+            - llvm-toolchain-trusty-5.0
         packages:
             - flex
             - libreadline-dev
             - tcl-dev
-            - llvm-3.4-dev
+            - llvm-5.0-dev
             - libedit-dev
             - verilator
 before_install:

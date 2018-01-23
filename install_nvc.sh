@@ -7,9 +7,9 @@ path="https://github.com/nickg/nvc/releases/download/r${release}/nvc-${release}.
 wget -q -N ${path}
 tar -xzvf nvc-${release}.tar.gz
 pushd nvc-${release}
-./tools/fetch-ieee.sh && ./configure --prefix=$HOME
+./tools/fetch-ieee.sh && ./configure --prefix=${HOME} --with-llvm=${LLVM_CONFIG}
 make && make install
-mkdir -p $HOME/.nvc/lib
+mkdir -p ${HOME}/.nvc/lib
 ./tools/build-2008-support.rb
 popd
 fi
