@@ -12,11 +12,11 @@ class AlteraPlatform(GenericPlatform):
         else:
             raise ValueError("Unknown toolchain")
 
-    def get_verilog(self, *args, special_overrides=dict(), **kwargs):
+    def get_hdl(self, *args, special_overrides=dict(), **kwargs):
         so = dict(common.altera_special_overrides)
         so.update(special_overrides)
-        return GenericPlatform.get_verilog(self, *args, special_overrides=so,
-                                           **kwargs)
+        return GenericPlatform.get_hdl(self, *args, special_overrides=so,
+                                       **kwargs)
 
     def build(self, *args, **kwargs):
         return self.toolchain.build(self, *args, **kwargs)

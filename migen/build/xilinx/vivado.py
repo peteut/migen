@@ -76,8 +76,9 @@ class XilinxVivadoToolchain:
         "keep": ("dont_touch", "true"),
         "no_retiming": ("dont_touch", "true"),
         "async_reg": ("async_reg", "true"),
-        "ars_meta": ("ars_meta", "true"),  # user-defined attribute
-        "ars_false_path": ("ars_false_path", "true"),  # user-defined attribute
+        "mr_ff": ("mr_ff", "true"),  # user-defined attribute
+        "ars_ff1": ("ars_ff1", "true"),  # user-defined attribute
+        "ars_ff2": ("ars_ff2", "true"),  # user-defined attribute
         "no_shreg_extract": None
     }
 
@@ -91,10 +92,10 @@ class XilinxVivadoToolchain:
 
     def _build_batch(self, platform, sources, build_name):
         tcl = []
-        tcl.append("create_project -force -part {} {}".format(
-            platform.device, build_name))
-        tcl.append("create_property ars_meta net")
-        tcl.append("create_property ars_false_path net")
+        tcl.append("create_project -force -name {} -part {}".format(build_name, platform.device))
+        tcl.append("create_property -type bool mr_ff net")
+        tcl.append("create_property -type bool ars_ff1 cell")
+        tcl.append("create_property -type bool ars_ff2 cell")
         for filename, language, library in sources:
             filename_tcl = "{" + filename + "}"
             tcl.append("add_files " + filename_tcl)
@@ -108,17 +109,22 @@ class XilinxVivadoToolchain:
             tcl.append("synth_design -top top -part {} -include_dirs {{{}}}".format(platform.device, " ".join(platform.verilog_include_paths)))
         else:
             tcl.append("synth_design -top top -part {}".format(platform.device))
+        tcl.append("write_checkpoint -force {}_synth.dcp".format(build_name))
+        tcl.append("report_timing_summary -file {}_timing_synth.rpt".format(build_name))
         tcl.append("report_utilization -hierarchical -file {}_utilization_hierarchical_synth.rpt".format(build_name))
         tcl.append("report_utilization -file {}_utilization_synth.rpt".format(build_name))
+        tcl.append("opt_design")
         tcl.append("place_design")
         if self.with_phys_opt:
             tcl.append("phys_opt_design -directive AddRetime")
+        tcl.append("write_checkpoint -force {}_place.dcp".format(build_name))
         tcl.append("report_utilization -hierarchical -file {}_utilization_hierarchical_place.rpt".format(build_name))
         tcl.append("report_utilization -file {}_utilization_place.rpt".format(build_name))
         tcl.append("report_io -file {}_io.rpt".format(build_name))
         tcl.append("report_control_sets -verbose -file {}_control_sets.rpt".format(build_name))
         tcl.append("report_clock_utilization -file {}_clock_utilization.rpt".format(build_name))
         tcl.append("route_design")
+        tcl.append("write_checkpoint -force {}_route.dcp".format(build_name))
         tcl.append("report_route_status -file {}_route_status.rpt".format(build_name))
         tcl.append("report_drc -file {}_drc.rpt".format(build_name))
         tcl.append("report_timing_summary -datasheet -max_paths 10 -file {}_timing.rpt".format(build_name))
@@ -150,17 +156,24 @@ class XilinxVivadoToolchain:
         del self.false_paths
 
     def _constrain(self, platform):
+        # The asynchronous input to a MultiReg is a false path
+        platform.add_platform_command(
+            "set_false_path -quiet "
+            "-to [get_nets -hier -filter mr_ff]]"
+        )
         # The asychronous reset input to the AsyncResetSynchronizer is a false
         # path
         platform.add_platform_command(
-            "set_false_path -quiet -through "
-            "[get_nets -hier -filter {{ars_false_path==true}}]"
+            "set_false_path -quiet "
+            "-to [get_pins -filter {{REF_PIN_NAME == PRE}} -of "
+            "[get_cells -hier -filter {{ars_ff1 || ars_ff2}}]]"
         )
         # clock_period-2ns to resolve metastability on the wire between the
         # AsyncResetSynchronizer FFs
         platform.add_platform_command(
-            "set_max_delay 2 -quiet -through "
-            "[get_nets -hier -filter {{ars_meta==true}}]"
+            "set_max_delay 2 -quiet "
+            "-from [get_cells -hier -filter ars_ff1] "
+            "-to [get_cells -hier -filter ars_ff2]"
         )
 
     def build(self, platform, fragment, build_dir="build", build_name="top",

@@ -19,13 +19,14 @@ class MultiRegImpl(Module):
         self.odomain = odomain
 
         w, signed = value_bits_sign(self.i)
-        self.regs = [Signal((w, signed)) for i in range(n)]
+        self.regs = [Signal((w, signed), reset_less=True)
+                     for i in range(n)]
 
         ###
 
+        sd = getattr(self.sync, self.odomain)
         src = self.i
         for reg in self.regs:
-            sd = getattr(self.sync, self.odomain)
             sd += reg.eq(src)
             src = reg
         self.comb += self.o.eq(src)
@@ -67,9 +68,9 @@ class PulseSynchronizer(Module):
 
         ###
 
-        toggle_i = Signal()
-        toggle_o = Signal()
-        toggle_o_r = Signal()
+        toggle_i = Signal(reset_less=True)
+        toggle_o = Signal()  # registered reset_less by MultiReg
+        toggle_o_r = Signal(reset_less=True)
 
         sync_i = getattr(self.sync, idomain)
         sync_o = getattr(self.sync, odomain)
@@ -88,7 +89,7 @@ class BusSynchronizer(Module):
     ``MultiReg``)."""
     def __init__(self, width, idomain, odomain, timeout=128):
         self.i = Signal(width)
-        self.o = Signal(width)
+        self.o = Signal(width, reset_less=True)
 
         if width == 1:
             self.specials += MultiReg(self.i, self.o, odomain)
@@ -108,8 +109,8 @@ class BusSynchronizer(Module):
                 self._pong.i.eq(self._ping.i)
             ]
 
-            ibuffer = Signal(width)
-            obuffer = Signal(width)
+            ibuffer = Signal(width, reset_less=True)
+            obuffer = Signal(width)  # registered reset_less by MultiReg
             sync_i += If(self._pong.o, ibuffer.eq(self.i))
             ibuffer.attr.add("no_retiming")
             self.specials += MultiReg(ibuffer, obuffer, odomain)
@@ -144,7 +145,7 @@ class GrayCounter(Module):
 class GrayDecoder(Module):
     def __init__(self, width):
         self.i = Signal(width)
-        self.o = Signal(width)
+        self.o = Signal(width, reset_less=True)
 
         # # #
 
@@ -207,25 +208,23 @@ def lcm(a, b):
 class Gearbox(Module):
     def __init__(self, iwidth, idomain, owidth, odomain):
         self.i = Signal(iwidth)
-        self.o = Signal(owidth)
+        self.o = Signal(owidth, reset_less=True)
 
         # # #
 
-        reset = Signal()
+        rst = Signal()
         cd_write = ClockDomain()
         cd_read = ClockDomain()
         self.comb += [
+            rst.eq(ResetSignal(idomain) | ResetSignal(odomain)),
             cd_write.clk.eq(ClockSignal(idomain)),
             cd_read.clk.eq(ClockSignal(odomain)),
-            reset.eq(ResetSignal(idomain) | ResetSignal(odomain))
-        ]
-        self.specials += [
-            AsyncResetSynchronizer(cd_write, reset),
-            AsyncResetSynchronizer(cd_read, reset)
+            cd_write.rst.eq(rst),
+            cd_read.rst.eq(rst)
         ]
         self.clock_domains += cd_write, cd_read
 
-        storage = Signal(2 * lcm(iwidth, owidth))
+        storage = Signal(2 * lcm(iwidth, owidth), reset_less=True)
         wrchunks = len(storage) // iwidth
         rdchunks = len(storage) // owidth
         wrpointer = Signal(

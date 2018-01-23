@@ -86,7 +86,7 @@ def layout_partial(layout, *elements):
 
 
 class Record:
-    def __init__(self, layout, name=None):
+    def __init__(self, layout, name=None, **kwargs):
         self.name = get_obj_var_name(name, "")
         self.layout = layout
 
@@ -100,10 +100,10 @@ class Record:
                     fname, fsize, fdirection = f
                 else:
                     fname, fsize = f
-                finst = Signal(fsize, name=prefix + fname)
+                finst = Signal(fsize, name=prefix + fname, **kwargs)
             elif isinstance(f[1], list):  # case 3
                 fname, fsublayout = f
-                finst = Record(fsublayout, prefix + fname)
+                finst = Record(fsublayout, prefix + fname, **kwargs)
             else:
                 raise TypeError
             setattr(self, fname, finst)
@@ -131,15 +131,28 @@ class Record:
     def raw_bits(self):
         return Cat(*self.flatten())
 
-    def connect(self, *slaves, leave_out=set()):
-        if isinstance(leave_out, str):
-            leave_out = {leave_out}
+    def connect(self, *slaves, keep=None, omit=None):
+        if keep is None:
+            _keep = set([f[0] for f in self.layout])
+        elif isinstance(keep, list):
+            _keep = set(keep)
+        else:
+            _keep = keep
+        if omit is None:
+            _omit = set()
+        elif isinstance(omit, list):
+            _omit = set(omit)
+        else:
+            _omit = omit
+
+        _keep = _keep - _omit
+
         r = []
         for f in self.layout:
             field = f[0]
-            if field not in leave_out:
-                self_e = getattr(self, field)
-                if isinstance(self_e, Signal):
+            self_e = getattr(self, field)
+            if isinstance(self_e, Signal):
+                if field in _keep:
                     direction = f[2]
                     if direction == DIR_M_TO_S:
                         r += [getattr(slave, field).eq(self_e) for slave in slaves]
@@ -147,9 +160,9 @@ class Record:
                         r.append(self_e.eq(reduce(or_, [getattr(slave, field) for slave in slaves])))
                     else:
                         raise TypeError
-                else:
-                    for slave in slaves:
-                        r += self_e.connect(getattr(slave, field), leave_out=leave_out)
+            else:
+                for slave in slaves:
+                    r += self_e.connect(getattr(slave, field), keep=keep, omit=omit)
         return r
 
     def connect_flat(self, *slaves):
