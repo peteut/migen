@@ -79,10 +79,6 @@ def _printentity(f, ios, name, ns):
 _get_comb, _get_sync, _get_clock_domains = map(
     attrgetter, ["comb", "sync", "clock_domains"])
 
-_reg_typename = "{}_reg_t".format
-
-_rin_name = "{}_rin".format
-
 _r_name = "{}_r".format
 
 _v_name = "{}_v".format
