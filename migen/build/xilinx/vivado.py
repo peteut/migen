@@ -3,7 +3,6 @@
 
 import os
 import sys
-import contextlib
 from toolz.curried import *  # noqa
 
 from migen.fhdl.structure import _Fragment
@@ -143,8 +142,7 @@ class XilinxVivadoToolchain:
                 "create_clock -name {clk} -period " + str(period) +
                 " [get_nets {clk}]", clk=clk)
         for from_, to in sorted(self.false_paths, key=comp(tuple, map(hash))):
-            if (from_ not in self.clocks
-                    or to not in self.clocks):
+            if (from_ not in self.clocks or to not in self.clocks):
                 raise ValueError("Vivado requires period "
                                  "constraints on all clocks used in false paths")
             platform.add_platform_command(
@@ -180,7 +178,6 @@ class XilinxVivadoToolchain:
               toolchain_path="/opt/Xilinx/Vivado", source=True, run=True,
               **kwargs):
         os.makedirs(build_dir, exist_ok=True)
-
 
         hdl = kwargs.get("hdl", "verilog")
 
