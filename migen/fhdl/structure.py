@@ -20,6 +20,9 @@ class DUID:
     def __init__(self):
         self._duid = next(DUID.__duid)
 
+    def __hash__(self):
+        return self._duid
+
 
 class _Value(DUID):
     """Base class for operands

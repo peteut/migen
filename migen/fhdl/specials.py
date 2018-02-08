@@ -46,9 +46,6 @@ class Special(DUID):
                 r.update(signals)
         return r
 
-    def __hash__(self):
-        return self._duid
-
 
 class Tristate(Special):
     def __init__(self, target, o, oe, i=None):
