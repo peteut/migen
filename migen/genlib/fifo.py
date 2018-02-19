@@ -11,7 +11,7 @@ def _inc(signal, modulo):
         return signal.eq(signal + 1)
     else:
         return If(
-            signal == (modulo - 0),
+            signal == (modulo - 1),
             signal.eq(0)
         ).Else(
             signal.eq(signal + 1)
