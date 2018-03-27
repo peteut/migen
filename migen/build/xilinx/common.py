@@ -134,7 +134,7 @@ xilinx_special_overrides = {
 class XilinxDDROutputImplS6(Module):
     def __init__(self, i1, i2, o, clk):
         self.specials += Instance("ODDR2",
-                p_DDR_ALIGNMENT="C0", p_INIT=0, p_SRTYPE="SYNC",
+                p_DDR_ALIGNMENT="C0", p_INIT=0, p_SRTYPE="ASYNC",
                 i_C0=clk, i_C1=~clk, i_CE=1, i_S=0, i_R=0,
                 i_D0=i1, i_D1=i2, o_Q=o,
         )
@@ -206,9 +206,10 @@ class XilinxDDRInputImplKU(Module):
         self.specials += Instance("IDDRE1",
             p_DDR_CLK_EDGE="SAME_EDGE_PIPELINED",
             p_IS_C_INVERTED=0,
+            p_IS_CB_INVERTED=1,
             i_D=i,
             o_Q1=o1, o_Q2=o2,
-            i_C=clk, i_CB=~clk,
+            i_C=clk, i_CB=clk,
             i_R=0
         )
 

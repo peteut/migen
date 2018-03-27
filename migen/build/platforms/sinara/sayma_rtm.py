@@ -23,11 +23,13 @@ _io = [
 
     # HMC clocking chips (830 and 7043)
     ("hmc_spi", 0,
-        Subsignal("clk", Pins("A17")),
-        Subsignal("mosi", Pins("B16")),
-        Subsignal("miso", Pins("D9"), Misc("PULLDOWN")),
+        Subsignal("clk", Pins("A17"), Misc("PULLDOWN=TRUE")),
         # cs[0]=830 cs[1]=7043
-        Subsignal("cs_n", Pins("C8 D16")),
+        # Watch out for the HMC830 SPI mode peculiarity. PULLDOWN CS here
+        # so that toggling the SPI core offline will make edges.
+        Subsignal("cs_n", Pins("C8 D16"), Misc("PULLDOWN=TRUE")),
+        Subsignal("mosi", Pins("B16"), Misc("PULLDOWN=TRUE")),
+        Subsignal("miso", Pins("D9"), Misc("PULLDOWN=TRUE")),
         IOStandard("LVCMOS25")
     ),
     ("hmc7043_reset", 0, Pins("E17"), IOStandard("LVCMOS25")),
@@ -40,18 +42,18 @@ _io = [
     # DACs
     ("ad9154_rst_n", 0, Pins("U15"), IOStandard("LVCMOS25")),
     ("ad9154_spi", 0,
-        Subsignal("clk", Pins("T13")),
-        Subsignal("cs_n", Pins("U14")),
-        Subsignal("mosi", Pins("V17")),
-        Subsignal("miso", Pins("R13"), Misc("PULLDOWN")),
+        Subsignal("clk", Pins("T13"), Misc("PULLDOWN=TRUE")),
+        Subsignal("cs_n", Pins("U14"), Misc("PULLUP=TRUE")),
+        Subsignal("mosi", Pins("V17"), Misc("PULLDOWN=TRUE")),
+        Subsignal("miso", Pins("R13"), Misc("PULLDOWN=TRUE")),
         IOStandard("LVCMOS25")
     ),
     ("ad9154_txen", 0, Pins("V16 U16"), IOStandard("LVCMOS25")),
     ("ad9154_spi", 1,
-        Subsignal("clk", Pins("J15")),
-        Subsignal("cs_n", Pins("K18")),
-        Subsignal("mosi", Pins("J18")),
-        Subsignal("miso", Pins("J16"), Misc("PULLDOWN")),
+        Subsignal("clk", Pins("J15"), Misc("PULLDOWN=TRUE")),
+        Subsignal("cs_n", Pins("K18"), Misc("PULLUP=TRUE")),
+        Subsignal("mosi", Pins("J18"), Misc("PULLDOWN=TRUE")),
+        Subsignal("miso", Pins("J16"), Misc("PULLDOWN=TRUE")),
         IOStandard("LVCMOS25")
     ),
     ("ad9154_txen", 1, Pins("L17 L14"), IOStandard("LVCMOS25")),

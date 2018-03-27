@@ -325,7 +325,7 @@ class Simulator:
             self.evaluator.execute([x])
             return None
         else:
-            raise ValueError
+            raise ValueError("Invalid simulator exec/eval request", x)
 
     def _process_generators(self, cd):
         exhausted = []
