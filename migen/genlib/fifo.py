@@ -234,7 +234,8 @@ class AsyncFIFOBuffered(Module, _FIFOInterface):
         self.we = fifo.we
 
         self.sync.read += \
-            If(self.re | ~self.readable,
+            If(
+                self.re | ~self.readable,
                 self.dout.eq(fifo.dout),
                 self.readable.eq(fifo.readable)
             )
