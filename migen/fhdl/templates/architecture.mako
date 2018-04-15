@@ -12,9 +12,9 @@ get_name = ns.get_name
 %>\
 architecture ${name | filters.architecture_id} of ${name} is
 % for cd, sigs in cd_regs:
-    type ${cd | filters.reg_typename} is record
+type ${cd | filters.reg_typename} is record
 % for sig in sigs:
-${get_name(sig)}: ${helper.get_sigtype(sig)};
+${get_name(sig) | filters.indent(1)}: ${helper.get_sigtype(sig)};
 % endfor
 end record ${cd | filters.reg_typename};
 signal ${cd | filters.rin_name}: ${cd | filters.reg_typename}; -- register input for cd "${cd}"
