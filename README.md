@@ -56,7 +56,7 @@ plat = m1.Platform()
 led = plat.request("user_led")
 m = Module()
 counter = Signal(26)
-m.comb += led.eq(counter[25])
+m.comb += led.eq(counter[-1])
 m.sync += counter.eq(counter + 1)
 plat.build(m)
 ```
@@ -71,11 +71,11 @@ def get_readme_module():
     m = Module()
     led = Signal()
     counter = Signal(26)
-    m.comb += led.eq(counter[25])
+    m.comb += led.eq(counter[-1])
     m.sync += counter.eq(counter + 1)
-    return m, ios
+    return m, {led}
 
-example = get_readme_module()
+example, ios = get_readme_module()
 vhdl.convert(example, ios).write("module.vhd")
 ```
 
