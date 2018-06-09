@@ -32,7 +32,7 @@ install:
     - pip install coveralls
     - llvm-config --version
     - llvm-config --components
-    - ./install_nvc.sh
+    - ./ci/install_nvc.sh
 script:
     - tox
 after_success:
