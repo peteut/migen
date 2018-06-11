@@ -47,12 +47,12 @@ class MultiReg(Special):
         yield self, "o", SPECIAL_OUTPUT
 
     def rename_clock_domain(self, old, new):
-        Special.rename_clock_domain(self, old, new)
+        super().rename_clock_domain(old, new)
         if self.odomain == old:
             self.odomain = new
 
     def list_clock_domains(self):
-        r = Special.list_clock_domains(self)
+        r = super().list_clock_domains()
         r.add(self.odomain)
         return r
 
@@ -212,46 +212,45 @@ class Gearbox(Module):
 
         # # #
 
-        rst = Signal()
-        cd_write = ClockDomain()
-        cd_read = ClockDomain()
-        self.comb += [
-            rst.eq(ResetSignal(idomain) | ResetSignal(odomain)),
-            cd_write.clk.eq(ClockSignal(idomain)),
-            cd_read.clk.eq(ClockSignal(odomain)),
-            cd_write.rst.eq(rst),
-            cd_read.rst.eq(rst)
-        ]
-        self.clock_domains += cd_write, cd_read
+        sync_i = getattr(self.sync, idomain)
+        sync_o = getattr(self.sync, odomain)
 
         storage = Signal(2 * lcm(iwidth, owidth), reset_less=True)
         wrchunks = len(storage) // iwidth
         rdchunks = len(storage) // owidth
         wrpointer = Signal(
             max=wrchunks, reset=0 if iwidth > owidth else wrchunks // 2)
+        wrpointer_next = Signal.like(wrpointer)
+        rdpointer_reset = rdchunks // 2 if iwidth > owidth else 0
         rdpointer = Signal(
-            max=rdchunks, reset=rdchunks // 2 if iwidth > owidth else 0)
-
-        self.sync.write += \
+            max=rdchunks, reset=rdpointer_reset, reset_less=True)
+        rdpointer_next = Signal.like(rdpointer)
+        rd_rst = Signal()
+        self.specials += MultiReg(ResetSignal(idomain), rd_rst, odomain)
+        self.comb += [
             If(
                 wrpointer == wrchunks - 1,
-                wrpointer.eq(0)
+                wrpointer_next.eq(0),
             ).Else(
-                wrpointer.eq(wrpointer + 1)
-            )
-        cases = {}
-        for i in range(wrchunks):
-            cases[i] = [storage[iwidth * i:iwidth * (i + 1)].eq(self.i)]
-        self.sync.write += Case(wrpointer, cases)
-
-        self.sync.read += \
+                wrpointer_next.eq(wrpointer + 1),
+            ),
             If(
+                rd_rst,
+                rdpointer_next.eq(rdpointer_reset),
+            ).Elif(
                 rdpointer == rdchunks - 1,
-                rdpointer.eq(0)
+                rdpointer_next.eq(0),
             ).Else(
-                rdpointer.eq(rdpointer + 1)
-            )
-        cases = {}
-        for i in range(rdchunks):
-            cases[i] = [self.o.eq(storage[owidth * i:owidth * (i + 1)])]
-        self.sync.read += Case(rdpointer, cases)
+                rdpointer_next.eq(rdpointer + 1),
+            ),
+        ]
+        sync_i += wrpointer.eq(wrpointer_next)
+        sync_o += rdpointer.eq(rdpointer_next)
+
+        cases = {i: storage[iwidth * i:iwidth * (i + 1)].eq(self.i)
+                 for i in range(wrchunks)}
+        sync_i += Case(wrpointer, cases)
+
+        cases = {i: self.o.eq(storage[owidth * i:owidth * (i + 1)])
+                 for i in range(rdchunks)}
+        sync_o += Case(rdpointer, cases)
