@@ -161,8 +161,8 @@ _io = [
         Subsignal("clk_n", Pins("H8")), # rtm_fpga_usr_io_n
         Subsignal("tx_p", Pins("A13")), # rtm_fpga_lvds1_p
         Subsignal("tx_n", Pins("A12")), # rtm_fpga_lvds1_n
-        Subsignal("rx_p", Pins("C12")), # rtm_fpga_lvds2_p
-        Subsignal("rx_n", Pins("B12")), # rtm_fpga_lvds2_n
+        Subsignal("rx_p", Pins("C12"), Misc("DIFF_TERM_ADV=TERM_100")), # rtm_fpga_lvds2_p
+        Subsignal("rx_n", Pins("B12"), Misc("DIFF_TERM_ADV=TERM_100")), # rtm_fpga_lvds2_n
         IOStandard("LVDS")
     ),
 
@@ -328,6 +328,8 @@ class Platform(XilinxPlatform):
                 self, "xcku040-ffva1156-1-c", _io, _connectors,
                 toolchain="vivado")
         self.toolchain.bitstream_commands.extend([
+            # FIXME: enable this when the XADC reference wiring is fixed
+            # "set_property BITSTREAM.CONFIG.OVERTEMPPOWERDOWN Enable [current_design]",
             "set_property BITSTREAM.GENERAL.COMPRESS True [current_design]",
             "set_property BITSTREAM.CONFIG.CONFIGRATE 33 [current_design]",
             "set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]",

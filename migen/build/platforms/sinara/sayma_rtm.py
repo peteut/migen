@@ -12,12 +12,12 @@ _io = [
     ),
 
     ("amc_rtm_serwb", 0,
-        Subsignal("clk_p", Pins("R18")), # rtm_fpga_usr_io_p
-        Subsignal("clk_n", Pins("T18")), # rtm_fpga_usr_io_n
+        Subsignal("clk_p", Pins("R18"), Misc("DIFF_TERM=TRUE")), # rtm_fpga_usr_io_p
+        Subsignal("clk_n", Pins("T18"), Misc("DIFF_TERM=TRUE")), # rtm_fpga_usr_io_n
         Subsignal("tx_p", Pins("T17")),  # rtm_fpga_lvds2_p
         Subsignal("tx_n", Pins("U17")),  # rtm_fpga_lvds2_n
-        Subsignal("rx_p", Pins("R16")),  # rtm_fpga_lvds1_p
-        Subsignal("rx_n", Pins("R17")),  # rtm_fpga_lvds1_n
+        Subsignal("rx_p", Pins("R16"), Misc("DIFF_TERM=TRUE")),  # rtm_fpga_lvds1_p
+        Subsignal("rx_n", Pins("R17"), Misc("DIFF_TERM=TRUE")),  # rtm_fpga_lvds1_n
         IOStandard("LVDS_25")
     ),
 
@@ -133,3 +133,10 @@ class Platform(XilinxPlatform):
 
     def __init__(self):
         XilinxPlatform.__init__(self, "xc7a15t-csg325-1", _io, toolchain="vivado")
+        self.toolchain.bitstream_commands.extend([
+            # FIXME: enable this when the XADC reference wiring is fixed
+            # "set_property BITSTREAM.CONFIG.OVERTEMPPOWERDOWN Enable [current_design]",
+            "set_property BITSTREAM.GENERAL.COMPRESS True [current_design]",
+            "set_property CFGBVS VCCO [current_design]",
+            "set_property CONFIG_VOLTAGE 3.3 [current_design]",
+        ])

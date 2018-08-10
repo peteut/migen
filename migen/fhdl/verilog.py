@@ -110,7 +110,8 @@ def _printexpr(ns, node):
     elif isinstance(node, Replicate):
         return "{{{}{{{}}}}}".format(node.n, _printexpr(ns, node.v)[0]), False
     else:
-        raise TypeError("Expression of unrecognized type: '{}'".format(type(node).__name__))
+        raise TypeError("Expression of unrecognized type: '{}'".format(
+            type(node).__name__))
 
 
 _AT_BLOCKING, _AT_NONBLOCKING, _AT_SIGNAL = range(3)
@@ -131,7 +132,8 @@ def _printnode(ns, at, level, node):
     elif isinstance(node, collections.Iterable):
         return "".join(list(map(partial(_printnode, ns, at, level), node)))
     elif isinstance(node, If):
-        r = "\t" * level + "if ({}) begin\n".format(_printexpr(ns, node.cond)[0])
+        r = "\t" * level + "if ({}) begin\n".format(
+            _printexpr(ns, node.cond)[0])
         r += _printnode(ns, at, level + 1, node.t)
         if node.f:
             r += "\t" * level + "end else begin\n"
@@ -140,11 +142,14 @@ def _printnode(ns, at, level, node):
         return r
     elif isinstance(node, Case):
         if node.cases:
-            r = "\t" * level + "case ({})\n".format(_printexpr(ns, node.test)[0])
-            css = [(k, v) for k, v in node.cases.items() if isinstance(k, Constant)]
+            r = "\t" * level + "case ({})\n".format(
+                _printexpr(ns, node.test)[0])
+            css = [(k, v) for k, v in node.cases.items()
+                   if isinstance(k, Constant)]
             css = sorted(css, key=lambda x: x[0].value)
             for choice, statements in css:
-                r += "\t" * (level + 1) + "{}: begin\n".format(_printexpr(ns, choice)[0])
+                r += "\t" * (level + 1) + "{}: begin\n".format(
+                    _printexpr(ns, choice)[0])
                 r += _printnode(ns, at, level + 2, statements)
                 r += "\t" * (level + 1) + "end\n"
             if "default" in node.cases:
@@ -159,13 +164,15 @@ def _printnode(ns, at, level, node):
         raise TypeError("Node of unrecognized type:{}".format(type(node)))
 
 
-def _list_comb_wires(f):
-    r = set()
+def _list_comb_wires_regs(f):
+    w, r = set(), set()
     groups = group_by_targets(f.comb)
     for g in groups:
         if len(g[1]) == 1 and isinstance(g[1][0], _Assign):
+            w |= g[0]
+        else:
             r |= g[0]
-    return r
+    return w, r
 
 
 def _printattr(attr, attr_translate):
@@ -197,7 +204,8 @@ def _printheader(f, ios, name, ns, attr_translate,
     special_outs = list_special_ios(f, False, True, True)
     inouts = list_special_ios(f, False, False, True)
     targets = list_targets(f) | special_outs
-    wires = _list_comb_wires(f) | special_outs
+    wires, comb_regs = _list_comb_wires_regs(f)
+    wires |= special_outs
     r = "module " + name + "(\n"
     firstp = True
     for sig in sorted(ios, key=hash):
@@ -224,8 +232,9 @@ def _printheader(f, ios, name, ns, attr_translate,
         if sig in wires:
             r += "wire " + _printsig(ns, sig) + ";\n"
         else:
-            if reg_initialization:
-                r += "reg " + _printsig(ns, sig) + " = " + _printexpr(ns, sig.reset)[0] + ";\n"
+            if reg_initialization and sig not in comb_regs:
+                r += "reg " + _printsig(ns, sig) + " = " \
+                    + _printexpr(ns, sig.reset)[0] + ";\n"
             else:
                 r += "reg " + _printsig(ns, sig) + ";\n"
     r += "\n"
@@ -269,16 +278,19 @@ def _printcomb(f, ns,
                 if display_run:
                     r += "\t$display(\"Running comb block #" + str(n) + "\");\n"
                 if blocking_assign:
-                    for t in g[0]:
-                        r += "\t" + ns.get_name(t) + " = " + _printexpr(ns, t.reset)[0] + ";\n"
+                    for t in sorted(g[0], key=hash):
+                        r += "\t" + ns.get_name(t) + " = " \
+                            + _printexpr(ns, t.reset)[0] + ";\n"
                     r += _printnode(ns, _AT_BLOCKING, 1, g[1])
                 else:
-                    for t in g[0]:
-                        r += "\t" + ns.get_name(t) + " <= " + _printexpr(ns, t.reset)[0] + ";\n"
+                    for t in sorted(g[0], key=hash):
+                        r += "\t" + ns.get_name(t) + " <= " \
+                            + _printexpr(ns, t.reset)[0] + ";\n"
                     r += _printnode(ns, _AT_NONBLOCKING, 1, g[1])
                 if dummy_signal:
                     r += syn_off
-                    r += "\t" + ns.get_name(dummy_d) + " <= " + ns.get_name(dummy_s) + ";\n"
+                    r += "\t" + ns.get_name(dummy_d) + " <= " \
+                        + ns.get_name(dummy_s) + ";\n"
                     r += syn_on
                 r += "end\n"
     r += "\n"
@@ -301,9 +313,11 @@ def _printspecials(overrides, specials, ns, add_data_file, attr_translate):
             attr = _printattr(special.attr, attr_translate)
             if attr:
                 r += attr + " "
-        pr = call_special_classmethod(overrides, special, "emit_verilog", ns, add_data_file)
+        pr = call_special_classmethod(
+            overrides, special, "emit_verilog", ns, add_data_file)
         if pr is None:
-            raise NotImplementedError("Special " + str(special) + " failed to implement emit_verilog")
+            raise NotImplementedError(
+                "Special {} failed to implement emit_verilog".format(special))
         r += pr
     return r
 
