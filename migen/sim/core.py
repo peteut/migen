@@ -5,7 +5,7 @@ from functools import wraps
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import (_Value, _Statement,
-                                  _Operator, _Slice, _ArrayProxy,
+                                  _Operator, _Slice, _Part, _ArrayProxy,
                                   _Assign, _Fragment)
 from migen.fhdl.bitcontainer import value_bits_sign
 from migen.fhdl.tools import (list_targets, list_signals,
@@ -104,7 +104,7 @@ class Evaluator:
         self.modifications.clear()
         return r
 
-    def eval(self, node, postcommit=False):
+    def eval(self, node, postcommit=False):  # noqa
         if isinstance(node, Constant):
             return node.value
         elif isinstance(node, Signal):
@@ -132,13 +132,19 @@ class Evaluator:
             v = self.eval(node.value, postcommit)
             idx = range(node.start, node.stop)
             return sum(((v >> i) & 1) << j for j, i in enumerate(idx))
+        elif isinstance(node, _Part):
+            v = self.eval(node.value, postcommit)
+            offset = self.eval(node.offset, postcommit)
+            idx = range(offset, offset + node.width)
+            return sum(((v >> i) & 1) << j for j, i in enumerate(idx))
         elif isinstance(node, Cat):
             shift = 0
             r = 0
             for element in node.l:
                 nbits = len(element)
                 # make value always positive
-                r |= (self.eval(element, postcommit) & (2 ** nbits - 1)) << shift
+                r |= (self.eval(element, postcommit) &
+                      (2 ** nbits - 1)) << shift
                 shift += nbits
             return r
         elif isinstance(node, Replicate):
@@ -150,7 +156,8 @@ class Evaluator:
             return self.eval(node.choices[idx], postcommit)
         elif isinstance(node, _MemoryLocation):
             array = self.replaced_memories[node.memory]
-            return self.eval(array[self.eval(node.index, postcommit)], postcommit)
+            return self.eval(array[self.eval(node.index, postcommit)],
+                             postcommit)
         elif isinstance(node, ClockSignal):
             return self.eval(self.clock_domains[node.cd].clk, postcommit)
         elif isinstance(node, ResetSignal):
@@ -159,8 +166,9 @@ class Evaluator:
                 if node.allow_reset_less:
                     return 0
                 else:
-                    raise ValueError("Attempted to get reset signal of resetless"
-                                     " domain '{}'".format(node.cd))
+                    raise ValueError(
+                        "Attempted to get reset signal of resetless"
+                        " domain '{}'".format(node.cd))
             else:
                 return self.eval(rst, postcommit)
         else:
@@ -183,6 +191,14 @@ class Evaluator:
             # set them to the new value
             value &= 2 ** (node.stop - node.start) - 1
             full_value |= value << node.start
+            self.assign(node.value, full_value)
+        elif isinstance(node, _Part):
+            full_value = self.eval(node.value, True)
+            offset = self.eval(node.offset, True)
+            start = offset
+            full_value &= ~((2**stop - 1) - (2**start - 1))
+            value &= 2**(stop - start) - 1
+            full_value |= value << start
             self.assign(node.value, full_value)
         elif isinstance(node, _ArrayProxy):
             idx = min(len(node.choices) - 1, self.eval(node.key))
@@ -235,8 +251,8 @@ class DummyAsyncResetSynchronizer:
 
 # TODO: instances via Iverilog/VPI
 class Simulator:
-    def __init__(self, fragment_or_module, generators, clocks={"sys": 10}, vcd_name=None,
-                 special_overrides={}):
+    def __init__(self, fragment_or_module, generators, clocks={"sys": 10},  # noqa
+                 vcd_name=None, special_overrides={}):
         if isinstance(fragment_or_module, _Fragment):
             self.fragment = fragment_or_module
         else:
@@ -247,11 +263,13 @@ class Simulator:
 
         overrides = {AsyncResetSynchronizer: DummyAsyncResetSynchronizer}
         overrides.update(special_overrides)
-        fs, lowered = lower_specials(overrides=overrides, specials=self.fragment.specials)
+        fs, lowered = lower_specials(overrides=overrides,
+                                     specials=self.fragment.specials)
         self.fragment += fs
         self.fragment.specials -= lowered
         if self.fragment.specials:
-            raise ValueError("Could not lower all specials", self.fragment.specials)
+            raise ValueError("Could not lower all specials",
+                             self.fragment.specials)
 
         if not isinstance(generators, dict):
             generators = {"sys": generators}

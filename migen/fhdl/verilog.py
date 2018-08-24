@@ -4,7 +4,7 @@ import collections
 import logging
 
 from migen.fhdl.structure import *  # noqa
-from migen.fhdl.structure import _Operator, _Slice, _Assign, _Fragment
+from migen.fhdl.structure import _Operator, _Slice, _Assign, _Fragment, _Part
 from migen.fhdl.tools import *  # noqa
 from migen.fhdl.namer import build_namespace
 from migen.fhdl.conv_output import ConvOutput
@@ -51,7 +51,7 @@ def _printconstant(node):
         return "{}'d{}".format(node.nbits, node.value), False
 
 
-def _printexpr(ns, node):
+def _printexpr(ns, node):  # noqa
     if isinstance(node, Constant):
         return _printconstant(node)
     elif isinstance(node, Signal):
@@ -104,8 +104,12 @@ def _printexpr(ns, node):
             sr = "[{}:{}]".format(node.stop - 1, node.start)
         r, s = _printexpr(ns, node.value)
         return r + sr, s
+    elif isinstance(node, _Part):
+        sr = "[{}+:{}]".format(_printexpr(ns, node.offset)[0], node.width)
+        r, s = _printexpr(ns, node.value)
+        return r + sr, s
     elif isinstance(node, Cat):
-        l = [_printexpr(ns, v)[0] for v in reversed(node.l)]
+        l = [_printexpr(ns, v)[0] for v in reversed(node.l)]  # noqa
         return "{{{}}}".format(", ".join(l)), False
     elif isinstance(node, Replicate):
         return "{{{}{{{}}}}}".format(node.n, _printexpr(ns, node.v)[0]), False
@@ -276,7 +280,8 @@ def _printcomb(f, ns,
 
                 r += "always @(*) begin\n"
                 if display_run:
-                    r += "\t$display(\"Running comb block #" + str(n) + "\");\n"
+                    r += "\t$display(\"Running comb block #" + str(n) + \
+                        "\");\n"
                 if blocking_assign:
                     for t in sorted(g[0], key=hash):
                         r += "\t" + ns.get_name(t) + " = " \
@@ -300,7 +305,8 @@ def _printcomb(f, ns,
 def _printsync(f, ns):
     r = ""
     for k, v in sorted(f.sync.items(), key=itemgetter(0)):
-        r += "always @(posedge " + ns.get_name(f.clock_domains[k].clk) + ") begin\n"
+        r += "always @(posedge " + ns.get_name(f.clock_domains[k].clk) + \
+            ") begin\n"
         r += _printnode(ns, _AT_SIGNAL, 1, v)
         r += "end\n\n"
     return r
@@ -327,14 +333,16 @@ class DummyAttrTranslate:
         return (k, "true")
 
 
-def convert(f, ios=None, name="top",
+def convert(fi, ios=None, name="top",
             special_overrides=dict(),
             attr_translate=DummyAttrTranslate(),
             create_clock_domains=True,
             display_run=False, asic_syntax=False):
     r = ConvOutput()
-    if not isinstance(f, _Fragment):
-        f = f.get_fragment()
+    f = _Fragment()
+    if not isinstance(fi, _Fragment):
+        fi = fi.get_fragment()
+    f += fi
     if ios is None:
         ios = set()
 

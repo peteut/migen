@@ -158,6 +158,28 @@ class _Value(DUID):
         """
         return _Assign(self, r)
 
+    def part(self, offset, width):
+        """Indexed part-select
+        Selects a constant width but variable offset part of a ``_Value``
+
+        Parameters
+        ----------
+        offset : _Value, in
+            start point of the selected bits
+        width : Constant, in
+            number of selected bits
+
+        Returns
+        -------
+        _Part
+            Selected part of the ``_Value``
+        """
+        offset = wrap(offset)
+        return _Part(self, offset, width)
+
+    def __hash__(self):
+        raise TypeError("unhashable type: '{}'".format(type(self).__name__))
+
 
 def wrap(value):
     """Ensures that the passed object is a Migen value. Booleans and integers
@@ -207,6 +229,21 @@ class _Slice(_Value):
         self.stop = stop
 
 
+class _Part(_Value):
+    def __init__(self, value, offset, width):
+        _Value.__init__(self)
+        if not isinstance(width, int):
+            raise TypeError("Cannot use non int width {} ({}) for part".format(
+                width, repr(width)))
+        if not isinstance(offset, Constant) and not isinstance(offset, _Value):
+            raise TypeError("Must use Value or Constant offset "
+                            "instead of {} ({}) for part".format(
+                                offset, repr(offset)))
+        self.value = value
+        self.offset = offset
+        self.width = width
+
+
 class Cat(_Value):
     """Concatenate values
 
@@ -233,7 +270,7 @@ class Cat(_Value):
     """
     def __init__(self, *args):
         super().__init__()
-        self.l = [wrap(v) for v in _flat_iteration(args)]
+        self.l = [wrap(v) for v in _flat_iteration(args)]  # noqa
 
 
 class Replicate(_Value):
@@ -357,8 +394,9 @@ class Signal(_Value):
 
         for n in [name, name_override]:
             if n is not None and not self._name_re.match(n):
-                raise ValueError("Signal name {} is not a valid Python identifier"
-                                 .format(repr(n)))
+                raise ValueError(
+                    "Signal name {} is not a valid Python identifier"
+                    .format(repr(n)))
 
         # determine number of bits and signedness
         if bits_sign is None:
@@ -369,7 +407,8 @@ class Signal(_Value):
             max -= 1  # make both bounds inclusive
             assert(min < max)
             self.signed = min < 0 or max < 0
-            self.nbits = _builtins.max(bits_for(min, self.signed), bits_for(max, self.signed))
+            self.nbits = _builtins.max(
+                bits_for(min, self.signed), bits_for(max, self.signed))
         else:
             assert(min is None and max is None)
             if isinstance(bits_sign, tuple):
@@ -379,7 +418,8 @@ class Signal(_Value):
         if isinstance(reset, (bool, int)):
             reset = Constant(reset, (self.nbits, self.signed))
         if not isinstance(self.nbits, int) or self.nbits <= 0:
-            raise ValueError("Signal width must be a strictly positive integer")
+            raise ValueError(
+                "Signal width must be a strictly positive integer")
         if attr is None:
             attr = set()
 
@@ -397,7 +437,8 @@ class Signal(_Value):
         super().__setattr__(k, v)
 
     def __repr__(self):
-        return "<Signal " + (self.backtrace[-1][0] or "anonymous") + " at " + hex(id(self)) + ">"
+        return "<Signal {} at <{:#0x}>".format(
+            self.backtrace[-1][0] or "anonymous", id(self))
 
     @classmethod
     def like(cls, other, **kwargs):
@@ -472,7 +513,7 @@ class _Statement:
 
 class _Assign(_Statement):
     def __init__(self, l, r):
-        self.l = wrap(l)
+        self.l = wrap(l)  # noqa
         self.r = wrap(r)
 
 
@@ -630,12 +671,14 @@ class _ArrayProxy(_Value):
         self.key = key
 
     def __getattr__(self, attr):
-        return _ArrayProxy([getattr(choice, attr) for choice in self.choices],
-                           self.key)
+        return _ArrayProxy(
+            [getattr(choice, attr) for choice in self.choices],
+            self.key)
 
     def __getitem__(self, key):
-        return _ArrayProxy([choice.__getitem__(key) for choice in self.choices],
-                           self.key)
+        return _ArrayProxy(
+            [choice.__getitem__(key) for choice in self.choices],
+            self.key)
 
 
 class Array(list):
@@ -701,7 +744,8 @@ class ClockDomain:
     def __init__(self, name=None, reset_less=False):
         self.name = _tracer.get_obj_var_name(name)
         if self.name is None:
-            raise ValueError("Cannot extract clock domain name from code, need to specify.")
+            raise ValueError(
+                "Cannot extract clock domain name from code, need to specify.")
         if self.name.startswith("cd_"):
             self.name = self.name[3:]
         if self.name[0].isdigit():
@@ -750,7 +794,8 @@ SPECIAL_INPUT, SPECIAL_OUTPUT, SPECIAL_INOUT = range(3)
 
 
 class _Fragment:
-    def __init__(self, comb=None, sync=None, specials=None, clock_domains=None):
+    def __init__(self, comb=None, sync=None, specials=None,
+                 clock_domains=None):
         if comb is None:
             comb = []
         if sync is None:
