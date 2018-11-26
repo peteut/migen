@@ -22,7 +22,7 @@ def _find_platforms(mod_root):
     return imports
 
 
-class TestModulePlatform(Module):
+class _TestModulePlatform(Module):
     def __init__(self, plat):
         # FIXME: Somehow incorporate plat.request() into this.
         inp = Signal()
@@ -41,7 +41,7 @@ class TestExamplesPlatform(unittest.TestCase):
                     pass
                 else:
                     plat = importlib.import_module(mod).Platform()
-                    m = TestModulePlatform(plat)
+                    m = _TestModulePlatform(plat)
                     with tempfile.TemporaryDirectory(name) as temp_dir:
                         plat.build(m, run=False, build_name=name,
                                    build_dir=temp_dir)
