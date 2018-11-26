@@ -372,9 +372,9 @@ def convert(fi, ios=None, name="top",
             io_name = io.backtrace[-1][0]
             if io_name:
                 io.name_override = io_name
-    ns = build_namespace(list_signals(f) |
-                         list_special_ios(f, True, True, True) |
-                         ios, _reserved_keywords)
+    ns = build_namespace(
+        list_signals(f) | list_special_ios(f, True, True, True) | ios,
+        _reserved_keywords)
     ns.clock_domains = f.clock_domains
     r.ns = ns
 

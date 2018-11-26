@@ -143,8 +143,7 @@ class Evaluator:
             for element in node.l:
                 nbits = len(element)
                 # make value always positive
-                r |= (self.eval(element, postcommit) &
-                      (2 ** nbits - 1)) << shift
+                r |= (self.eval(element, postcommit) & (2 ** nbits - 1)) << shift
                 shift += nbits
             return r
         elif isinstance(node, Replicate):
@@ -276,8 +275,7 @@ class Simulator:
         self.generators = dict()
         self.passive_generators = set()
         for k, v in generators.items():
-            if (isinstance(v, collections.Iterable) and
-                    not inspect.isgenerator(v)):
+            if (isinstance(v, collections.Iterable) and not inspect.isgenerator(v)):
                 self.generators[k] = list(v)
             else:
                 self.generators[k] = [v]

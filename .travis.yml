@@ -28,12 +28,15 @@ before_install:
 install:
     - pip install -U pip
     - pip install tox
-    - pip install setuptools==26.1
+    - pip install setuptools
     - pip install coveralls
     - llvm-config --version
     - llvm-config --components
     - ./ci/install_nvc.sh
+before_script:
+    - export PATH=$HOME/bin:$PATH
 script:
+    - ls -l $HOME/bin
     - tox
 after_success:
     - coveralls

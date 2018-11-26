@@ -38,16 +38,14 @@ def _target_eq(a, b):
     elif ty == Cat:
         return all(_target_eq(x, y) for x, y in zip(a.l, b.l))
     elif ty == _Slice:
-        return (_target_eq(a.value, b.value) and
-                a.start == b.start and
-                a.stop == b.stop)
+        return (_target_eq(
+            a.value, b.value) and a.start == b.start and a.stop == b.stop)
     elif ty == _Part:
-        return (_target_eq(a.value, b.value) and
-                _target_eq(a.offset == b.offset) and
-                a.width == b.width)
+        return (_target_eq(a.value, b.value) and _target_eq(
+            a.offset == b.offset) and a.width == b.width)
     elif ty == _ArrayProxy:
-        return (all(_target_eq(x, y) for x, y in zip(a.choices, b.choices)) and
-                _target_eq(a.key, b.key))
+        return (all(_target_eq(x, y) for x, y in zip(a.choices, b.choices)
+                    ) and _target_eq(a.key, b.key))
     else:
         raise ValueError("NextValue cannot be used with target type '{}'"
                          .format(ty))
@@ -238,8 +236,8 @@ class FSM(Module):
         # drive entering/leaving signals
         for state, signal in self.before_leaving_signals.items():
             encoded = self.encoding[state]
-            self.comb += signal.eq((self.state ==
-                                    encoded) & ~(self.next_state == encoded))
+            self.comb += signal.eq(
+                (self.state == encoded) & ~(self.next_state == encoded))
         if self.reset_state in self.after_entering_signals:
             self.after_entering_signals[self.reset_state].reset = 1
         for state, signal in self.before_entering_signals.items():

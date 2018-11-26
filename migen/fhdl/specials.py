@@ -79,7 +79,7 @@ class Tristate(Special):
 
     @staticmethod
     def emit_vhdl(tristate, ns, add_data_file):
-        trisatetemplate = Template("""\
+        trisatetemplate = Template(r"""\
 <%!
 import toolz.curried as toolz
 from migen.fhdl.structure import _Fragment
@@ -136,8 +136,8 @@ class Instance(Special):
     class PreformattedParam(str):
         pass
 
-    def __init__(self, of, *items, name="", synthesis_directive=None,
-                 attr=None, **kwargs):
+    def __init__(self, of, name="", synthesis_directive=None,
+                 attr=None, *items, **kwargs):
         super().__init__()
         self.of = of
         if name:
@@ -153,8 +153,7 @@ class Instance(Special):
             try:
                 item_type, item_name = k.split("_", maxsplit=1)
             except ValueError:
-                raise TypeError("Wrong format for value '" + str(k) +
-                                "', format should be 'type_name'")
+                raise TypeError("Wrong format for value '%s', format should be 'type_name'" % k)
 
             item_class = {
                 "i": Instance.Input,
@@ -398,8 +397,7 @@ class Memory(Special):
                     if port.mode == READ_FIRST:
                         rd = "\t" + bassign
                     elif port.mode == NO_CHANGE:
-                        rd = ("\tif (!{})\n".format(gn(port.we)) +
-                              "\t\t" + bassign)
+                        rd = ("\tif (!{})\n".format(gn(port.we)) + "\t\t" + bassign)
                 if port.re is None:
                     r += rd
                 else:
