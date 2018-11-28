@@ -117,14 +117,14 @@ fi
 
 class AlteraQuartusToolchain:
     def build(self, platform, fragment, build_dir="build", build_name="top",
-              toolchain_path="/opt/Altera", run=True):
+              toolchain_path="/opt/Altera", run=True, **kwargs):
         os.makedirs(build_dir, exist_ok=True)
 
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
             platform.finalize(fragment)
 
-        v_output = platform.get_hdl(fragment)
+        v_output = platform.get_hdl(fragment, name=build_name, **kwargs)
         named_sc, named_pc = platform.resolve_signals(v_output.ns)
         v_file = build_name + ".v"
         with ChdirContext(build_dir):

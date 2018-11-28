@@ -5,6 +5,7 @@ from toolz.curried import *  # noqa
 
 from migen.fhdl.structure import *  # noqa
 from migen.fhdl.structure import _Value
+from migen.fhdl.module import *  # noqa
 from migen.fhdl.bitcontainer import bits_for, value_bits_sign
 from migen.fhdl.tools import *  # noqa
 from migen.fhdl.tracer import get_obj_var_name
@@ -47,33 +48,71 @@ class Special(DUID):
         return r
 
 
+class _TristateModule(Module):
+    def __init__(self, target, o, oe, i):
+        self.comb += [
+            target.o.eq(o),
+            target.oe.eq(oe)
+        ]
+        if i is not None:
+            self.comb += i.eq(target.i)
+
+
 class Tristate(Special):
     def __init__(self, target, o, oe, i=None):
         super().__init__()
-        self.target = wrap(target)
+        self._isrecord = hasattr(target, "o") and hasattr(target, "oe")
+        if not self._isrecord:
+            self.target = wrap(target)
+        else:
+            self.target = target
+            self._target_o = target.o
+            self._target_oe = target.oe
+            self._target_i = getattr(target, "i", None)
+            if i is not None and not hasattr(target, "i"):
+                raise ValueError("target has to have i field if parameter i is not None")
         self.o = wrap(o)
         self.oe = wrap(oe)
         self.i = wrap(i) if i is not None else None
 
     def iter_expressions(self):
-        for attr, target_context in [
-                ("target", SPECIAL_INOUT),
-                ("o", SPECIAL_INPUT),
-                ("oe", SPECIAL_INPUT),
-                ("i", SPECIAL_OUTPUT)]:
+        if not self._isrecord:
+            tri_attr_context = [
+                ("target", SPECIAL_INOUT)
+            ]
+        else:
+            tri_attr_context = [
+                ("_target_o", SPECIAL_OUTPUT),
+                ("_target_oe", SPECIAL_OUTPUT),
+                ("_target_i", SPECIAL_INPUT)
+            ]
+        tri_attr_context += [
+            ("o", SPECIAL_INPUT),
+            ("oe", SPECIAL_INPUT),
+            ("i", SPECIAL_OUTPUT)
+        ]
+        for attr, target_context in tri_attr_context:
             if getattr(self, attr) is not None:
                 yield self, attr, target_context
 
     @staticmethod
+    def lower(tristate):
+        if not tristate._isrecord:
+            return None
+        else:
+            return _TristateModule(tristate.target, tristate.o, tristate.oe, tristate.i)
+
+    @staticmethod
     def emit_verilog(tristate, ns, add_data_file):
+        assert(not tristate._isrecord)
+
         def pe(e):
             return verilog_printexpr(ns, e)[0]
         w, s = value_bits_sign(tristate.target)
-        r = "assign " + pe(tristate.target) + " = " \
-            + pe(tristate.oe) + " ? " + pe(tristate.o) \
-            + " : " + str(w) + "'bz;\n"
+        r = "assign {} = {} ? {} : {}'bz;\n'".format(
+            pe(tristate.target), pe(tristate.oe), pe(tristate.o), w)
         if tristate.i is not None:
-            r += "assign " + pe(tristate.i) + " = " + pe(tristate.target) + ";\n"
+            r += "assign {} = ̣{};\n".format(pe(tristate.i), pe(tristate.target))
         r += "\n"
         return r
 
@@ -100,13 +139,20 @@ ${printexpr(tristate.i)} <= ${printexpr(tristate.target)};
 
 
 class TSTriple:
-    def __init__(self, bits_sign=None, min=None, max=None, reset_o=0, reset_oe=0, reset_i=0):
-        self.o = Signal(bits_sign, min=min, max=max, reset=reset_o)
-        self.oe = Signal(reset=reset_oe)
-        self.i = Signal(bits_sign, min=min, max=max, reset=reset_i)
+    def __init__(self, bits_sign=None, min=None, max=None, reset_o=0, reset_oe=0, reset_i=0,
+                 name=None):
+        self.o = Signal(bits_sign, min=min, max=max, reset=reset_o,
+                        name=None if name is None else name + "_o")
+        self.oe = Signal(reset=reset_oe,
+                         name=None if name is None else name + "_oe")
+        self.i = Signal(bits_sign, min=min, max=max, reset=reset_i,
+                        name=None if name is None else name + "_i")
 
     def get_tristate(self, target):
         return Tristate(target, self.o, self.oe, self.i)
+
+    def __len__(self):
+        return len(self.o)
 
 
 class Instance(Special):
@@ -177,10 +223,10 @@ class Instance(Special):
             elif isinstance(item, Instance.InOut):
                 yield item, "expr", SPECIAL_INOUT
 
-    @staticmethod
+    @staticmethod  # noqa
     def emit_verilog(instance, ns, add_data_file):
         r = instance.of + " "
-        parameters = list(filter(lambda i: isinstance(i, Instance.Parameter), instance.items))
+        parameters = [i for i in instance.items if isinstance(i, Instance.Parameter)]
         if parameters:
             r += "#(\n"
             firstp = True
@@ -196,7 +242,7 @@ class Instance(Special):
                 elif isinstance(p.value, Instance.PreformattedParam):
                     r += p.value
                 elif isinstance(p.value, str):
-                    r += "\"" + p.value + "\""
+                    r += "\"{}\"".format(p.value)
                 else:
                     raise TypeError
                 r += ")"
@@ -341,7 +387,7 @@ class Memory(Special):
         self.ports.append(mp)
         return mp
 
-    @staticmethod
+    @staticmethod  # noqa
     def emit_verilog(memory, ns, add_data_file):
         r = ""
 

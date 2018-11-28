@@ -83,7 +83,7 @@ class NodeVisitor:
     def visit_Case(self, node):
         self.visit(node.test)
         for v, statements in sorted(node.cases.items(),
-                                    key=lambda x: str(x[0])):
+                                    key=lambda x: -1 if x[0] is "default" else hash(x[0])):
             self.visit(statements)
 
     def visit_Fragment(self, node):
@@ -188,8 +188,9 @@ class NodeTransformer:
 
     def visit_Case(self, node):
         cases = {v: self.visit(statements)
-                 for v, statements in sorted(node.cases.items(),
-                                             key=lambda x: str(x[0]))}
+                 for v, statements in sorted(
+                     node.cases.items(),
+                     key=lambda x: -1 if x[0] is "default" else hash(x[0]))}
         r = Case(self.visit(node.test), cases)
         return r
 

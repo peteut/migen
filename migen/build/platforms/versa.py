@@ -92,5 +92,6 @@ class Platform(LatticePlatform):
             self.add_period_constraint(self.lookup_request("eth_clocks", 1).rx, 8.0)
         except ConstraintError:
             pass
+
     def create_programmer(self):
         return LatticeProgrammer()

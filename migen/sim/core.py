@@ -143,12 +143,12 @@ class Evaluator:
             for element in node.l:
                 nbits = len(element)
                 # make value always positive
-                r |= (self.eval(element, postcommit) & (2 ** nbits - 1)) << shift
+                r |= (self.eval(element, postcommit) & (2**nbits - 1)) << shift
                 shift += nbits
             return r
         elif isinstance(node, Replicate):
             nbits = len(node.v)
-            v = self.eval(node.v, postcommit) & (2 ** nbits - 1)
+            v = self.eval(node.v, postcommit) & (2**nbits - 1)
             return sum(v << i * nbits for i in range(node.n))
         elif isinstance(node, _ArrayProxy):
             idx = min(len(node.choices) - 1, self.eval(node.key, postcommit))
@@ -195,6 +195,7 @@ class Evaluator:
             full_value = self.eval(node.value, True)
             offset = self.eval(node.offset, True)
             start = offset
+            stop = offset + node.width
             full_value &= ~((2**stop - 1) - (2**start - 1))
             value &= 2**(stop - start) - 1
             full_value |= value << start
@@ -213,7 +214,7 @@ class Evaluator:
             if isinstance(s, _Assign):
                 self.assign(s.l, self.eval(s.r))
             elif isinstance(s, If):
-                if self.eval(s.cond) & (2 ** len(s.cond) - 1):
+                if self.eval(s.cond) & (2**len(s.cond) - 1):
                     self.execute(s.t)
                 else:
                     self.execute(s.f)
@@ -275,7 +276,8 @@ class Simulator:
         self.generators = dict()
         self.passive_generators = set()
         for k, v in generators.items():
-            if (isinstance(v, collections.Iterable) and not inspect.isgenerator(v)):
+            if (isinstance(v, collections.Iterable)
+                    and not inspect.isgenerator(v)):
                 self.generators[k] = list(v)
             else:
                 self.generators[k] = [v]
@@ -343,7 +345,7 @@ class Simulator:
         else:
             raise ValueError("Invalid simulator exec/eval request", x)
 
-    def _process_generators(self, cd):
+    def _process_generators(self, cd):  # noqa
         exhausted = []
         for generator in self.generators[cd]:
             reply = None
@@ -361,7 +363,16 @@ class Simulator:
                             raise ValueError("Unknown simulator command: '{}'"
                                              .format(request))
                     else:
-                        reply = self._evalexec_nested_lists(request)
+                        try:
+                            reply = self._evalexec_nested_lists(request)
+                        except Exception:
+                            tb = inspect.getframeinfo(generator.gi_frame)
+                            print("While evaluating the following generator, an error occurred:")
+                            print("  File {}, line {}, in {}".format(tb.filename, tb.lineno, tb.function))
+                            for c in tb.code_context:
+                                print("    ", c.lstrip())
+                            raise
+
                 except StopIteration:
                     exhausted.append(generator)
                     break

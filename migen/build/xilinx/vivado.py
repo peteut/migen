@@ -89,14 +89,28 @@ class XilinxVivadoToolchain:
         self.clocks = dict()
         self.false_paths = set()
 
-    def _build_batch(self, platform, sources, build_name):
+    def _build_batch(self, platform, sources, edifs, ips, build_name):
         tcl = []
         tcl.append("create_project -force -name {} -part {}".format(build_name, platform.device))
+        tcl.append("set_property XPM_LIBRARIES {XPM_CDC XPM_MEMORY} [current_project]")
         for filename, language, library in sources:
             filename_tcl = "{" + filename + "}"
             tcl.append("add_files " + filename_tcl)
             tcl.append("set_property library {} [get_files {}]"
                        .format(library, filename_tcl))
+
+        for filename in edifs:
+            filename_tcl = "{" + filename + "}"
+            tcl.append("read_edif " + filename_tcl)
+
+        for filename in ips:
+            filename_tcl = "{" + filename + "}"
+            ip = os.path.splitext(os.path.basename(filename))[0]
+            tcl.append("read_ip " + filename_tcl)
+            tcl.append("upgrade_ip [get_ips {}]".format(ip))
+            tcl.append("generate_target all [get_ips {}]".format(ip))
+            tcl.append("synth_ip [get_ips {}] -force".format(ip))
+            tcl.append("get_files -all -of_objects [get_files {}]".format(filename_tcl))
 
         tcl.append("read_xdc {}.xdc".format(build_name))
         tcl.extend(c.format(build_name=build_name) for c in self.pre_synthesis_commands)
@@ -185,13 +199,14 @@ class XilinxVivadoToolchain:
         platform.finalize(fragment)
         self._convert_clocks(platform)
         self._constrain(platform)
-        output = platform.get_hdl(fragment, hdl=hdl)
+        output = platform.get_hdl(fragment, hdl=hdl, **kwargs)
         named_sc, named_pc = platform.resolve_signals(output.ns)
         hdl_file = "{}.{}".format(build_name, "v" if hdl == "verilog" else "vhd")
         with ChdirContext(build_dir):
             output.write(hdl_file)
-            platform.add_source(hdl_file)
-            self._build_batch(platform, platform.sources, build_name)
+            sources = platform.sources | {
+                hdl_file, "verilog" if hdl == "verilog" else "vhdl", "work"}
+            self._build_batch(platform, sources, platform.edifs, platform.ips, build_name)
             tools.write_to_file(build_name + ".xdc", _build_xdc(named_sc, named_pc))
             if run:
                 _run_vivado(build_name, toolchain_path, source)

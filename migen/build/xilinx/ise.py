@@ -52,7 +52,7 @@ def _build_xst_files(device, sources, vincpaths, build_name, xst_opt):
 
     xst_contents = """run
 -ifn {build_name}.prj
--top top
+-top {build_name}
 {xst_opt}
 -ofn {build_name}.ngc
 -p {device}
@@ -158,7 +158,7 @@ class XilinxISEToolchain:
         self.ise_commands = ""
 
     def build(self, platform, fragment, build_dir="build", build_name="top",
-              toolchain_path=None, source=True, run=True, mode="xst"):
+              toolchain_path=None, source=True, run=True, mode="xst", **kwargs):
         if not isinstance(fragment, _Fragment):
             fragment = fragment.get_fragment()
         if toolchain_path is None:
@@ -176,7 +176,7 @@ class XilinxISEToolchain:
         os.makedirs(build_dir, exist_ok=True)
         with ChdirContext(build_dir):
             if mode in ("xst", "yosys", "cpld"):
-                v_output = platform.get_hdl(fragment)
+                v_output = platform.get_hdl(fragment, name=build_name, **kwargs)
                 vns = v_output.ns
                 named_sc, named_pc = platform.resolve_signals(vns)
                 v_file = build_name + ".v"

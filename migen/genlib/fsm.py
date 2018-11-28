@@ -38,11 +38,13 @@ def _target_eq(a, b):
     elif ty == Cat:
         return all(_target_eq(x, y) for x, y in zip(a.l, b.l))
     elif ty == _Slice:
-        return (_target_eq(
-            a.value, b.value) and a.start == b.start and a.stop == b.stop)
+        return (_target_eq(a.value, b.value)
+                and a.start == b.start
+                and a.stop == b.stop)
     elif ty == _Part:
-        return (_target_eq(a.value, b.value) and _target_eq(
-            a.offset == b.offset) and a.width == b.width)
+        return (_target_eq(a.value, b.value)
+                and _target_eq(a.offset == b.offset)
+                and a.width == b.width)
     elif ty == _ArrayProxy:
         return (all(_target_eq(x, y) for x, y in zip(a.choices, b.choices)
                     ) and _target_eq(a.key, b.key))
@@ -74,13 +76,10 @@ class _LowerNext(NodeTransformer):
             return self.next_state_signal.eq(self.encoding[actual_state])
         elif isinstance(node, NextValue):
             try:
-                next_value_ce, next_value = \
-                    self._get_register_control(node.target)
+                next_value_ce, next_value = self._get_register_control(node.target)
             except KeyError:
-                related = node.target \
-                    if isinstance(node.target, Signal) else None
-                next_value = Signal(bits_sign=value_bits_sign(node.target),
-                                    related=related)
+                related = node.target if isinstance(node.target, Signal) else None
+                next_value = Signal(bits_sign=value_bits_sign(node.target), related=related)
                 next_value_ce = Signal(related=related)
                 self.registers.append((node.target, next_value_ce, next_value))
             return next_value.eq(node.value), next_value_ce.eq(1)
@@ -141,15 +140,13 @@ class FSM(Module):
 
     def act(self, state, *statements):
         """
-        Schedules `statements` to be executed in `state`.
-        Statements may include:
+        Schedules `statements` to be executed in `state`. Statements may include:
 
             * combinatorial statements of form `a.eq(b)`, equivalent to
               `self.comb += a.eq(b)` when the FSM is in the given `state`;
             * synchronous statements of form `NextValue(a, b)`, equivalent to
               `self.sync += a.eq(b)` when the FSM is in the given `state`;
-            * a statement of form `NextState(new_state)`, selecting the next
-              state;
+            * a statement of form `NextState(new_state)`, selecting the next state;
             * `If`, `Case`, etc.
         """
         if self.finalized:
@@ -177,8 +174,8 @@ class FSM(Module):
 
     def ongoing(self, state):
         """
-        Returns a signal that has the value 1 when the FSM is in the given
-        `state`, and 0 otherwise.
+        Returns a signal that has the value 1 when the FSM is in the given `state`,
+        and 0 otherwise.
         """
         is_ongoing = Signal()
         self.act(state, is_ongoing.eq(1))
@@ -218,29 +215,30 @@ class FSM(Module):
         self.state = Signal(max=nstates, reset=self.encoding[self.reset_state])
         self.state._enumeration = self.decoding
         self.next_state = Signal(max=nstates)
-        self.next_state._enumeration = {n: "{}:{}".format(n, s)
-                                        for n, s in self.decoding.items()}
-
-        ln = _LowerNext(self.next_state, self.encoding, self.state_aliases)
-        cases = dict((self.encoding[k], ln.visit(v))
-                     for k, v in self.actions.items() if v)
-        self.comb += [
-            self.next_state.eq(self.state),
-            Case(self.state, cases).makedefault(
-                self.encoding[self.reset_state])
-        ]
-        self.sync += self.state.eq(self.next_state)
-        for register, next_value_ce, next_value in ln.registers:
-            self.sync += If(next_value_ce, register.eq(next_value))
+        self.next_state._enumeration = {n: "{}:{}".format(n, s) for n, s in self.decoding.items()}
 
         # drive entering/leaving signals
         for state, signal in self.before_leaving_signals.items():
             encoded = self.encoding[state]
-            self.comb += signal.eq(
-                (self.state == encoded) & ~(self.next_state == encoded))
+            self.comb += signal.eq((self.state == encoded) & ~(self.next_state == encoded))
         if self.reset_state in self.after_entering_signals:
             self.after_entering_signals[self.reset_state].reset = 1
         for state, signal in self.before_entering_signals.items():
             encoded = self.encoding[state]
-            self.comb += signal.eq(
-                ~(self.state == encoded) & (self.next_state == encoded))
+            self.comb += signal.eq(~(self.state == encoded) & (self.next_state == encoded))
+
+        # Allow overriding and extending control functionality (Next*) in subclasses.
+        self._finalize_sync(self._lower_controls())
+
+    def _lower_controls(self):
+        return _LowerNext(self.next_state, self.encoding, self.state_aliases)
+
+    def _finalize_sync(self, ls):
+        cases = dict((self.encoding[k], ls.visit(v)) for k, v in self.actions.items() if v)
+        self.comb += [
+            self.next_state.eq(self.state),
+            Case(self.state, cases).makedefault(self.encoding[self.reset_state])
+        ]
+        self.sync += self.state.eq(self.next_state)
+        for register, next_value_ce, next_value in ls.registers:
+            self.sync += If(next_value_ce, register.eq(next_value))
