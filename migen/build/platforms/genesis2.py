@@ -173,7 +173,7 @@ _io = [
 ]
 
 _connectors = [
-    ("HPC", {
+    ("hpc", {
         "dp1_m2c_p": "Y6",
         "dp1_m2c_n": "Y5",
         "dp2_m2c_p": "W4",
@@ -321,7 +321,7 @@ _connectors = [
     ("pmodb", "V29 V30 V25 W26 T25 U25 U22 U23"),
     ("pmodc", "AC26 AJ27 AH30 AK29 AD26 AG30 AK30 AK28"),
     ("pmodd", "V27 Y30 V24 W22 U24 Y26 V22 W21"),
-    ("XADC", {
+    ("xadc", {
         "vaux0_p": "J23",
         "vaux0_n": "J24",
         "vaux1_p": "K23",
