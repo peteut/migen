@@ -204,8 +204,8 @@ class XilinxVivadoToolchain:
         hdl_file = "{}.{}".format(build_name, "v" if hdl == "verilog" else "vhd")
         with ChdirContext(build_dir):
             output.write(hdl_file)
-            sources = platform.sources | {
-                hdl_file, "verilog" if hdl == "verilog" else "vhdl", "work"}
+            sources = platform.sources | {(
+                hdl_file, "verilog" if hdl == "verilog" else "vhdl", "work")}
             self._build_batch(platform, sources, platform.edifs, platform.ips, build_name)
             tools.write_to_file(build_name + ".xdc", _build_xdc(named_sc, named_pc))
             if run:
