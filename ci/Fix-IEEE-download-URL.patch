@@ -17,7 +17,7 @@ index 9e8e60b6..6064696b 100755
  
 -#ieee_url="https://standards.ieee.org/downloads/1076/1076.2-1996"
 -ieee_url="http://standards.ieee.org/downloads/"
-+ieee_url="https://standards.ieee.org/content/dam/ieee-standards/standards/web/download/"
++ieee_url="https://standards.ieee.org/content/dam/ieee-standards/standards/web/download"
  vital_url="https://raw.githubusercontent.com/tgingold/ghdl/master/libraries/vital2000"
  
  cat <<EOF

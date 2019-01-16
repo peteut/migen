@@ -4,14 +4,16 @@ python:
     - 3.5
 env:
     global:
-    - LLVM_VERSION=5.0
-    - LLVM_CONFIG="/usr/bin/llvm-config-${LLVM_VERSION}"
+        - LLVM_VERSION=5.0
+        - LLVM_CONFIG="/usr/bin/llvm-config-${LLVM_VERSION}"
+        - PREFIX=$HOME/.local
     matrix:
-    - TOXENV=py35
-    - TOXENV=docs
+        - TOXENV=py35
+        - TOXENV=docs
 cache:
-    - $HOME/.nvc/lib
-    - $HOME/opt
+    directories:
+        - ${HOME}/.local
+        - ${HOME}/.nvc
 addons:
     apt:
         sources:
@@ -24,7 +26,7 @@ addons:
             - libedit-dev
             - verilator
 before_install:
-    - export PATH=$HOME/bin:$PATH
+    - export PATH=$HOME/.local/bin:$PATH
 install:
     - pip install -U pip
     - pip install tox
@@ -32,11 +34,10 @@ install:
     - pip install coveralls
     - llvm-config --version
     - llvm-config --components
-    - ./ci/install_nvc.sh
-before_script:
-    - export PATH=$HOME/bin:$PATH
+    - ./ci/install_nvc.sh $PREFIX
 script:
-    - ls -l $HOME/bin
+    - ls -l $PREFIX
+    - nvc -v
     - tox
 after_success:
     - coveralls

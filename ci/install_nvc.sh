@@ -7,7 +7,7 @@ curl -sL  ${path} | tar -xzf -
 pushd nvc-${release}
 patch -p1  < ../ci/Fix-IEEE-download-URL.patch
 ./tools/fetch-ieee.sh
-./configure --prefix=${HOME} --with-llvm=${LLVM_CONFIG}
+./configure --prefix=${1} --with-llvm=${LLVM_CONFIG}
 make
 make install
 mkdir -p ${HOME}/.nvc/lib
