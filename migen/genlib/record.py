@@ -157,7 +157,9 @@ class Record:
                     if direction == DIR_M_TO_S:
                         r += [getattr(slave, field).eq(self_e) for slave in slaves]
                     elif direction == DIR_S_TO_M:
-                        r.append(self_e.eq(reduce(or_, [getattr(slave, field) for slave in slaves])))
+                        if len(slaves):
+                            r.append(self_e.eq(
+                                reduce(or_, [getattr(slave, field) for slave in slaves])))
                     else:
                         raise TypeError
             else:
