@@ -53,7 +53,7 @@ _io = [
      Subsignal("done", Pins("M10")),
      Subsignal("init_b", Pins("A10")),
      Subsignal("program_b", Pins("K10")),
-     Subsignal("LVCOMS33")),
+     IOStandard("LVCMOS33")),
 
     # ("spiflash", 0,
     #  Subsignal("cs_n", Pins("U19")),
